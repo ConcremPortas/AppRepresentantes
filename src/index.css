@@ -1,0 +1,59 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-primary: hsl(142, 93%, 8%);
+  --color-primary-hover: hsl(142, 93%, 15%);
+  --color-primary-foreground: hsl(0, 0%, 100%);
+  --color-background: hsl(0, 0%, 100%);
+  --color-foreground: hsl(0, 0%, 9%);
+  --color-card: hsl(0, 0%, 100%);
+  --color-card-foreground: hsl(0, 0%, 9%);
+  --color-muted: hsl(0, 0%, 96%);
+  --color-muted-foreground: hsl(0, 0%, 45%);
+  --color-border: hsl(0, 0%, 90%);
+  --color-input: hsl(0, 0%, 90%);
+  --color-ring: hsl(142, 93%, 8%);
+  --color-destructive: hsl(0, 84.2%, 60.2%);
+  --color-destructive-foreground: hsl(0, 0%, 98%);
+  --color-accent: hsl(142, 93%, 8%);
+  --color-accent-foreground: hsl(0, 0%, 100%);
+
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+
+  --font-family-sans: 'Inter', system-ui, sans-serif;
+}
+
+:root {
+  --status-aprovado-bg: hsl(134, 61%, 94%);
+  --status-aprovado-fg: hsl(142, 93%, 20%);
+  --status-enviado-bg: hsl(214, 100%, 94%);
+  --status-enviado-fg: hsl(221, 83%, 35%);
+  --status-analise-bg: hsl(38, 100%, 93%);
+  --status-analise-fg: hsl(32, 95%, 35%);
+  --status-devolvido-bg: hsl(0, 86%, 95%);
+  --status-devolvido-fg: hsl(0, 72%, 40%);
+  --status-perdido-bg: hsl(0, 0%, 94%);
+  --status-perdido-fg: hsl(0, 0%, 40%);
+  --status-rascunho-bg: hsl(0, 0%, 94%);
+  --status-rascunho-fg: hsl(0, 0%, 40%);
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: hsl(0, 0%, 100%);
+  color: hsl(0, 0%, 9%);
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: hsl(0, 0%, 90%);
+  border-radius: 2px;
+}
