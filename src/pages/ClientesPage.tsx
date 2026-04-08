@@ -26,75 +26,85 @@ function fmtCnpj(cnpj: string) {
 // ─── Card de cliente ──────────────────────────────────
 function ClienteCard({ cliente }: { cliente: ClienteCarteira }) {
   const [expanded, setExpanded] = useState(false);
-  const nome = cliente.cliente_fantasia?.trim() || cliente.cliente_nome;
+  const nome  = cliente.cliente_fantasia?.trim() || cliente.cliente_nome;
   const razao = cliente.cliente_fantasia?.trim() ? cliente.cliente_nome : null;
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="py-4 px-4">
-        {/* Cabeçalho */}
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 bg-[hsl(142,93%,8%)]/10 rounded-xl flex items-center justify-center flex-shrink-0">
-            <Building2 className="w-5 h-5 text-[hsl(142,93%,8%)]" />
+    <Card className="overflow-hidden">
+      <CardContent className="p-0">
+        {/* ── Linha principal ── */}
+        <div className="flex items-center gap-3 px-4 pt-3 pb-2">
+          {/* Avatar */}
+          <div className="w-9 h-9 rounded-xl bg-[hsl(142,93%,8%)]/8 flex items-center justify-center flex-shrink-0">
+            <Building2 className="w-4 h-4 text-[hsl(142,93%,8%)]" />
           </div>
+
+          {/* Texto */}
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-gray-900 text-sm leading-tight truncate">{nome}</p>
             {razao && (
-              <p className="text-xs text-gray-400 mt-0.5 truncate">{razao}</p>
+              <p className="text-[11px] text-gray-400 leading-tight truncate mt-0.5">{razao}</p>
             )}
-            <p className="text-[10px] text-gray-400 mt-0.5 font-mono">{fmtCnpj(cliente.cliente_cnpj)}</p>
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+              <span className="text-[10px] text-gray-400 font-mono">{fmtCnpj(cliente.cliente_cnpj)}</span>
+              {cliente.cliente_cidade && (
+                <>
+                  <span className="text-gray-200">·</span>
+                  <span className="text-[10px] text-gray-400 flex items-center gap-0.5">
+                    <MapPin className="w-2.5 h-2.5" />
+                    {cliente.cliente_cidade}/{cliente.cliente_uf}
+                  </span>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Métricas rápidas */}
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <div className="bg-gray-50 rounded-lg px-2.5 py-2">
-            <div className="flex items-center gap-1 text-gray-500">
-              <ShoppingCart className="w-3 h-3" />
-              <span className="text-[10px] font-medium">Pedidos</span>
+        {/* ── Métricas inline ── */}
+        <div className="flex items-center border-t border-gray-50 divide-x divide-gray-50">
+          <div className="flex-1 flex items-center gap-2 px-4 py-2">
+            <ShoppingCart className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+            <div>
+              <p className="text-[9px] font-medium text-gray-400 uppercase tracking-wider leading-none">Pedidos</p>
+              <p className="text-sm font-bold text-gray-900 leading-tight mt-0.5">{cliente.total_pedidos}</p>
             </div>
-            <p className="text-sm font-bold text-gray-900 mt-0.5">{cliente.total_pedidos}</p>
           </div>
-          <div className="bg-emerald-50 rounded-lg px-2.5 py-2">
-            <div className="flex items-center gap-1 text-emerald-700">
-              <DollarSign className="w-3 h-3" />
-              <span className="text-[10px] font-medium">Volume</span>
+          <div className="flex-1 flex items-center gap-2 px-4 py-2">
+            <DollarSign className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+            <div>
+              <p className="text-[9px] font-medium text-gray-400 uppercase tracking-wider leading-none">Volume</p>
+              <p className="text-sm font-bold text-emerald-600 leading-tight mt-0.5 tabular-nums">
+                {fmtCompact(cliente.total_comprado)}
+              </p>
             </div>
-            <p className="text-sm font-bold text-emerald-700 mt-0.5">
-              {formatCurrency(cliente.total_comprado)}
-            </p>
           </div>
         </div>
 
-        {/* Info de contato — expandível */}
+        {/* ── Expandir contato ── */}
         <button
           onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 mt-3 transition-colors"
+          className="w-full flex items-center justify-between px-4 py-2 border-t border-gray-50 text-xs text-gray-400 hover:bg-gray-50 transition-colors"
         >
-          {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-          {expanded ? 'Ocultar' : 'Ver'} contato
+          <span>{expanded ? 'Ocultar contato' : 'Ver contato'}</span>
+          {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
         </button>
 
         {expanded && (
-          <div className="mt-2 space-y-1.5 border-t border-gray-100 pt-2">
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              <MapPin className="w-3 h-3 flex-shrink-0 text-gray-400" />
-              <span>{cliente.cliente_cidade}/{cliente.cliente_uf}</span>
-            </div>
+          <div className="px-4 pb-3 pt-1 space-y-1.5 bg-gray-50/50">
             {cliente.cliente_telefone && (
-              <div className="flex items-center gap-2 text-xs text-gray-500">
+              <div className="flex items-center gap-2 text-xs text-gray-600">
                 <Phone className="w-3 h-3 flex-shrink-0 text-gray-400" />
                 <span>{cliente.cliente_telefone}</span>
               </div>
             )}
             {cliente.cliente_email && (
-              <div className="flex items-center gap-2 text-xs text-gray-500">
+              <div className="flex items-center gap-2 text-xs text-gray-600">
                 <Mail className="w-3 h-3 flex-shrink-0 text-gray-400" />
                 <span className="truncate">{cliente.cliente_email}</span>
               </div>
             )}
             {cliente.ultimo_pedido && (
-              <p className="text-[10px] text-gray-400 mt-1">
+              <p className="text-[10px] text-gray-400">
                 Último pedido: {formatDate(cliente.ultimo_pedido)}
               </p>
             )}
@@ -194,13 +204,13 @@ export default function ClientesPage() {
       {/* KPIs */}
       <div className="grid grid-cols-3 gap-2">
         {[
-          { label: 'Clientes',     value: clientes.length.toLocaleString('pt-BR') },
-          { label: 'Volume Total', value: fmtCompact(totalVolume) },
-          { label: 'Ticket Médio', value: fmtCompact(ticketMedio) },
-        ].map(({ label, value }) => (
-          <div key={label} className="bg-gray-50 rounded-xl px-2 py-2.5 text-center">
-            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-tight">{label}</p>
-            <p className="text-xs font-bold text-gray-900 mt-1 tabular-nums leading-tight break-all">{value}</p>
+          { label: 'Clientes',  value: clientes.length.toLocaleString('pt-BR'), color: 'text-gray-900' },
+          { label: 'Volume',    value: fmtCompact(totalVolume),                 color: 'text-emerald-700' },
+          { label: 'Tk. Médio', value: fmtCompact(ticketMedio),                 color: 'text-blue-700' },
+        ].map(({ label, value, color }) => (
+          <div key={label} className="bg-white border border-gray-100 rounded-xl px-3 py-2.5 text-center shadow-sm">
+            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider">{label}</p>
+            <p className={cn('text-sm font-bold mt-1 tabular-nums', color)}>{value}</p>
           </div>
         ))}
       </div>
@@ -301,7 +311,7 @@ export default function ClientesPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="space-y-2 sm:grid sm:grid-cols-2 sm:space-y-0 sm:gap-3 lg:grid-cols-3">
           {filtered.map(c => (
             <ClienteCard key={c.cliente_cnpj} cliente={c} />
           ))}
