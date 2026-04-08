@@ -47,6 +47,34 @@ body {
   color: hsl(0, 0%, 9%);
 }
 
+/* ── Safe area (iPhone notch / Dynamic Island) ── */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.safe-area-pt {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* ── Touch targets mínimos ── */
+@media (pointer: coarse) {
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  /* Exceções para botões icon pequenos inline */
+  .touch-compact button,
+  .touch-compact a {
+    min-height: unset;
+    min-width: unset;
+  }
+}
+
+/* ── Prevent text size adjust on iOS ── */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 .scrollbar-thin::-webkit-scrollbar {
   width: 4px;
 }

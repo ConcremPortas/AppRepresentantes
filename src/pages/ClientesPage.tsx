@@ -9,6 +9,13 @@ import { cn } from '@/utils/cn';
 import { useCarteira } from '@/hooks/useCarteira';
 import type { ClienteCarteira } from '@/services/carteira';
 
+// ─── Valor compacto para KPIs ─────────────────────────
+function fmtCompact(value: number): string {
+  if (value >= 1_000_000) return `R$ ${(value / 1_000_000).toFixed(1).replace('.', ',')}M`;
+  if (value >= 1_000)     return `R$ ${(value / 1_000).toFixed(1).replace('.', ',')}k`;
+  return `R$ ${value.toFixed(0)}`;
+}
+
 // ─── Formatação CNPJ ──────────────────────────────────
 function fmtCnpj(cnpj: string) {
   const n = cnpj.replace(/\D/g, '');
@@ -187,13 +194,13 @@ export default function ClientesPage() {
       {/* KPIs */}
       <div className="grid grid-cols-3 gap-2">
         {[
-          { label: 'Clientes', value: clientes.length.toLocaleString('pt-BR') },
-          { label: 'Volume Total', value: formatCurrency(totalVolume) },
-          { label: 'Ticket Médio', value: formatCurrency(ticketMedio) },
+          { label: 'Clientes',     value: clientes.length.toLocaleString('pt-BR') },
+          { label: 'Volume Total', value: fmtCompact(totalVolume) },
+          { label: 'Ticket Médio', value: fmtCompact(ticketMedio) },
         ].map(({ label, value }) => (
-          <div key={label} className="bg-gray-50 rounded-xl px-3 py-2.5 text-center">
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{label}</p>
-            <p className="text-sm font-bold text-gray-900 mt-0.5 tabular-nums">{value}</p>
+          <div key={label} className="bg-gray-50 rounded-xl px-2 py-2.5 text-center">
+            <p className="text-[9px] font-semibold text-gray-400 uppercase tracking-wider leading-tight">{label}</p>
+            <p className="text-xs font-bold text-gray-900 mt-1 tabular-nums leading-tight break-all">{value}</p>
           </div>
         ))}
       </div>

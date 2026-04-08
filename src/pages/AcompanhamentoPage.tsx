@@ -78,55 +78,57 @@ function Pipeline({ status, logs }: { status: PedidoStatus; logs: PedidoStatusLo
   }, [logs]);
 
   return (
-    <div className="flex items-start w-full mt-3 mb-1">
-      {STEPS.map((step, i) => {
-        const done    = i < currentIdx;
-        const current = i === currentIdx;
-        const Icon    = step.icon;
-        const dateStr = dateByStatus[step.key];
+    <div className="mt-3 mb-1 -mx-1 overflow-x-auto scrollbar-thin">
+      <div className="flex items-start px-1 pb-1" style={{ minWidth: `${STEPS.length * 56}px` }}>
+        {STEPS.map((step, i) => {
+          const done    = i < currentIdx;
+          const current = i === currentIdx;
+          const Icon    = step.icon;
+          const dateStr = dateByStatus[step.key];
 
-        return (
-          <div key={step.key} className="flex items-center flex-1 min-w-0">
-            {/* Nó */}
-            <div className="flex flex-col items-center flex-shrink-0">
-              <div className={cn(
-                'w-8 h-8 rounded-full flex items-center justify-center transition-all',
-                done    && `${step.bg} shadow-sm`,
-                current && `${step.bg} ring-4 ${step.ring} shadow-md scale-110`,
-                !done && !current && 'bg-gray-100',
-              )}>
-                <Icon className={cn('w-4 h-4', done || current ? 'text-white' : 'text-gray-300')} />
+          return (
+            <div key={step.key} className="flex items-center flex-1 min-w-0">
+              {/* Nó */}
+              <div className="flex flex-col items-center flex-shrink-0">
+                <div className={cn(
+                  'w-7 h-7 rounded-full flex items-center justify-center transition-all',
+                  done    && `${step.bg} shadow-sm`,
+                  current && `${step.bg} ring-4 ${step.ring} shadow-md scale-110`,
+                  !done && !current && 'bg-gray-100',
+                )}>
+                  <Icon className={cn('w-3.5 h-3.5', done || current ? 'text-white' : 'text-gray-300')} />
+                </div>
+
+                <span className={cn(
+                  'text-[8px] font-medium mt-1 whitespace-nowrap leading-tight text-center',
+                  done    && step.text,
+                  current && cn(step.text, 'font-bold'),
+                  !done && !current && 'text-gray-300',
+                )}>
+                  {step.label}
+                </span>
+
+                {/* Data do step */}
+                {(done || current) && dateStr ? (
+                  <span className={cn('text-[7px] leading-tight mt-0.5 tabular-nums', step.text, 'opacity-80')}>
+                    {fmtShort(dateStr)}
+                  </span>
+                ) : (done || current) ? (
+                  <span className="text-[7px] leading-tight mt-0.5 text-gray-300">—</span>
+                ) : null}
               </div>
 
-              <span className={cn(
-                'text-[9px] font-medium mt-1 whitespace-nowrap leading-tight text-center',
-                done    && step.text,
-                current && cn(step.text, 'font-bold'),
-                !done && !current && 'text-gray-300',
-              )}>
-                {step.label}
-              </span>
-
-              {/* Data do step */}
-              {(done || current) && dateStr ? (
-                <span className={cn('text-[8px] leading-tight mt-0.5 tabular-nums', step.text, 'opacity-80')}>
-                  {fmtShort(dateStr)}
-                </span>
-              ) : (done || current) ? (
-                <span className="text-[8px] leading-tight mt-0.5 text-gray-300">—</span>
-              ) : null}
+              {/* Linha conectora */}
+              {i < STEPS.length - 1 && (
+                <div className={cn(
+                  'flex-1 h-0.5 mx-0.5 mt-[-20px]',
+                  done ? step.line : 'bg-gray-200',
+                )} />
+              )}
             </div>
-
-            {/* Linha conectora */}
-            {i < STEPS.length - 1 && (
-              <div className={cn(
-                'flex-1 h-0.5 mx-1 mt-[-22px]',
-                done ? step.line : 'bg-gray-200',
-              )} />
-            )}
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }

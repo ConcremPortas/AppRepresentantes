@@ -18,8 +18,8 @@ const NAV_ITEMS = [
 
 export default function MobileNav() {
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 safe-area-pb"
-         style={{ background: 'hsl(142,93%,8%)' }}>
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30"
+         style={{ background: 'hsl(142,93%,8%)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
       <div className="flex items-stretch h-16">
         {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
           <NavLink

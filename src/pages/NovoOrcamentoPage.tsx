@@ -476,7 +476,7 @@ export default function NovoOrcamentoPage() {
   }
 
   return (
-    <div className="p-4 space-y-4 pb-32">
+    <div className="p-4 space-y-4" style={{ paddingBottom: 'calc(9rem + env(safe-area-inset-bottom, 0px))' }}>
 
       {/* Header */}
       <div className="flex items-center gap-3">
@@ -781,13 +781,16 @@ export default function NovoOrcamentoPage() {
         </CardContent>
       </Card>
 
-      {/* ── Barra inferior fixa ── */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between gap-3 z-40 lg:left-64">
-        <div className="text-sm text-gray-600 space-y-0.5">
-          <div>
+      {/* ── Barra inferior fixa — fica acima do MobileNav no mobile ── */}
+      <div
+        className="fixed left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between gap-3 z-40 lg:left-64"
+        style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }}
+      >
+        <div className="text-sm text-gray-600 min-w-0 flex-1">
+          <div className="truncate">
             {itens.length > 0
-              ? <span><strong>{itens.length}</strong> produto(s) · <strong>{itens.reduce((s,i)=>s+i.quantidade,0)}</strong> un.</span>
-              : <span className="text-gray-400">Nenhum item adicionado</span>
+              ? <span><strong>{itens.length}</strong> prod. · <strong>{itens.reduce((s,i)=>s+i.quantidade,0)}</strong> un.</span>
+              : <span className="text-gray-400 text-xs">Nenhum item adicionado</span>
             }
           </div>
           {freteValorNum > 0 && (
@@ -796,17 +799,17 @@ export default function NovoOrcamentoPage() {
             </div>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-shrink-0">
           <button
             onClick={() => navigate('/orcamentos')}
-            className="h-9 px-4 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+            className="h-9 px-3 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
           >
             Cancelar
           </button>
           <button
             onClick={() => saveMut.mutate()}
             disabled={!canSave || saveMut.isPending}
-            className="h-9 px-5 text-sm bg-[hsl(142,93%,8%)] text-white rounded-lg hover:bg-[hsl(142,93%,15%)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="h-9 px-4 text-sm bg-[hsl(142,93%,8%)] text-white rounded-lg hover:bg-[hsl(142,93%,15%)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5 whitespace-nowrap"
           >
             {saveMut.isPending
               ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
