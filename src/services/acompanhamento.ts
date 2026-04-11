@@ -51,7 +51,7 @@ export function mapStatus(dbStatus: string | null): PedidoStatus {
   return STATUS_MAP[dbStatus] ?? 'aprovado';
 }
 
-// ─── Fetch via RPC (bypassa RLS) ─────────────────────────
+// ─── Fetch via queries diretas ───────────────────────────
 
 export async function fetchAcompanhamento(
   repCodes: string[],
@@ -59,79 +59,88 @@ export async function fetchAcompanhamento(
 ): Promise<PedidoAcompanhamento[]> {
   if (!admin && repCodes.length === 0) return [];
 
-  // 1. RPC security definer: acessa pedidos_status + concrem_pedidos_venda
-  const { data: rows, error } = await supabase.rpc('get_acompanhamento', {
-    p_rep_codes: repCodes,
-    p_admin:     admin,
-  });
+  // 1. Buscar pedidos em concrem_pedidos_venda
+  let pedidosQuery = supabase
+    .from('concrem_pedidos_venda')
+    .select('id, numero_pedido, cliente_nome, cliente_fantasia, cliente_cnpj, data_emissao, total_pedido_venda, representante')
+    .order('data_emissao', { ascending: false });
 
-  if (error) throw error;
-
-  const list = (rows ?? []) as {
-    numero_pedido:      string;
-    status_atual:       string | null;
-    atualizado_em:      string;
-    cliente_nome:       string | null;
-    cliente_fantasia:   string | null;
-    cliente_cnpj:       string | null;
-    data_emissao:       string | null;
-    total_pedido_venda: number | null;
-    representante:      string | null;
-  }[];
-
-  const filtered = list.filter(r => !REP_EXCLUIDOS.includes(r.representante ?? ''));
-  if (!filtered.length) return [];
-  // shadow list with filtered
-  const listFiltered = filtered;
-
-  const numeros = listFiltered.map(r => r.numero_pedido).filter(Boolean);
-
-  // 2. Histórico — colunas reais: status_novo, alterado_em, alterado_por, observacao
-  let logsMap: Record<string, PedidoStatusLog[]> = {};
-  try {
-    const { data: logRows, error: logErr } = await supabase
-      .from('pedidos_status_historico')
-      .select('id,numero_pedido,status_novo,alterado_em,alterado_por,observacao')
-      .in('numero_pedido', numeros)
-      .order('alterado_em', { ascending: false });
-
-    if (!logErr) {
-      for (const row of (logRows ?? []) as {
-        id: string;
-        numero_pedido: string;
-        status_novo: string;
-        alterado_em: string;
-        alterado_por: string | null;
-        observacao: string | null;
-      }[]) {
-        if (!logsMap[row.numero_pedido]) logsMap[row.numero_pedido] = [];
-        logsMap[row.numero_pedido].push({
-          id:           row.id,
-          numero_pedido: row.numero_pedido,
-          status:       mapStatus(row.status_novo),
-          status_db:    row.status_novo,
-          observacao:   row.observacao,
-          responsavel:  row.alterado_por,
-          created_at:   row.alterado_em,
-        });
-      }
-    }
-  } catch {
-    logsMap = {};
+  if (!admin && repCodes.length > 0) {
+    pedidosQuery = pedidosQuery.in('representante', repCodes);
+  }
+  if (REP_EXCLUIDOS.length > 0) {
+    pedidosQuery = pedidosQuery.not(
+      'representante', 'in',
+      `(${REP_EXCLUIDOS.map(r => `"${r}"`).join(',')})`,
+    );
   }
 
-  // 3. Merge
-  return listFiltered.map(r => ({
-    numero_pedido:      r.numero_pedido,
-    cliente_nome:       r.cliente_nome       ?? r.numero_pedido,
-    cliente_fantasia:   r.cliente_fantasia   ?? null,
-    cliente_cnpj:       r.cliente_cnpj       ?? '',
-    data_emissao:       r.data_emissao       ?? r.atualizado_em,
-    total_pedido_venda: r.total_pedido_venda ?? 0,
-    representante:      r.representante      ?? null,
-    status:             mapStatus(r.status_atual),
+  const { data: pedidos, error: pedidosErr } = await pedidosQuery;
+  if (pedidosErr) throw pedidosErr;
+  if (!pedidos?.length) return [];
+
+  // 2. Status atual em pedidos_status (pedido_id = concrem_pedidos_venda.id)
+  const ids = pedidos.map(p => p.id).filter(Boolean);
+  const { data: statusRows } = await supabase
+    .from('pedidos_status')
+    .select('pedido_id, status')
+    .in('pedido_id', ids);
+
+  const statusById = new Map<string, string>();
+  for (const s of statusRows ?? []) {
+    statusById.set(s.pedido_id, s.status);
+  }
+
+  // 3. Histórico por numero_pedido
+  const numeros = pedidos.map(p => p.numero_pedido).filter(Boolean);
+  let logsMap: Record<string, PedidoStatusLog[]> = {};
+
+  if (numeros.length > 0) {
+    try {
+      const { data: logRows, error: logErr } = await supabase
+        .from('pedidos_status_historico')
+        .select('id, numero_pedido, status_novo, alterado_em, alterado_por, observacao')
+        .in('numero_pedido', numeros)
+        .order('alterado_em', { ascending: false });
+
+      if (!logErr) {
+        for (const row of (logRows ?? []) as {
+          id: string;
+          numero_pedido: string;
+          status_novo: string;
+          alterado_em: string;
+          alterado_por: string | null;
+          observacao: string | null;
+        }[]) {
+          if (!logsMap[row.numero_pedido]) logsMap[row.numero_pedido] = [];
+          logsMap[row.numero_pedido].push({
+            id:            row.id,
+            numero_pedido: row.numero_pedido,
+            status:        mapStatus(row.status_novo),
+            status_db:     row.status_novo,
+            observacao:    row.observacao,
+            responsavel:   row.alterado_por,
+            created_at:    row.alterado_em,
+          });
+        }
+      }
+    } catch {
+      logsMap = {};
+    }
+  }
+
+  // 4. Merge
+  return pedidos.map(p => ({
+    numero_pedido:      p.numero_pedido,
+    cliente_nome:       p.cliente_nome       ?? p.numero_pedido,
+    cliente_fantasia:   p.cliente_fantasia   ?? null,
+    cliente_cnpj:       p.cliente_cnpj       ?? '',
+    data_emissao:       p.data_emissao       ?? '',
+    total_pedido_venda: p.total_pedido_venda ?? 0,
+    representante:      p.representante      ?? null,
+    status:             mapStatus(statusById.get(p.id) ?? null),
     status_observacao:  null,
-    status_updated_at:  r.atualizado_em,
-    logs:               logsMap[r.numero_pedido] ?? [],
+    status_updated_at:  null,
+    logs:               logsMap[p.numero_pedido] ?? [],
   }));
 }

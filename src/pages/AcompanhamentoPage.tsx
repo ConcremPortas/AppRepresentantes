@@ -287,7 +287,9 @@ export default function AcompanhamentoPage() {
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <p className="text-sm font-semibold text-red-700">Erro ao carregar pedidos</p>
           <p className="text-xs text-red-500 mt-1 font-mono break-all">
-            {error instanceof Error ? error.message : String(error)}
+            {error instanceof Error
+              ? error.message
+              : (error as any)?.message ?? JSON.stringify(error)}
           </p>
         </div>
       </div>
