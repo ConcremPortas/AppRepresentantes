@@ -102,18 +102,21 @@ export async function fetchDashboardStats(
 
   // ── 3. Status do pipeline (pedidos_status) ──
   const numeros = pedidosData.map(p => p.numero_pedido).filter(Boolean);
-  const { data: statusRows } = await supabase
-    .from('pedidos_status')
-    .select('numero_pedido, status_atual')
-    .in('numero_pedido', numeros);
+
+  // Busca em lotes de 200 para evitar limite de URL do PostgREST
+  const statusPorNumero = new Map<string, PedidoStatus>();
+  for (let i = 0; i < numeros.length; i += 200) {
+    const batch = numeros.slice(i, i + 200);
+    const { data: statusRows } = await supabase
+      .from('pedidos_status')
+      .select('numero_pedido, status_atual')
+      .in('numero_pedido', batch);
+    for (const row of (statusRows ?? []) as { numero_pedido: string; status_atual: string }[]) {
+      statusPorNumero.set(row.numero_pedido, mapStatus(row.status_atual));
+    }
+  }
 
   const pipeline: PipelineCounts = { ...EMPTY_PIPELINE };
-
-  // Mapeia numero_pedido → status pipeline
-  const statusPorNumero = new Map<string, PedidoStatus>();
-  for (const row of (statusRows ?? []) as { numero_pedido: string; status_atual: string }[]) {
-    statusPorNumero.set(row.numero_pedido, mapStatus(row.status_atual));
-  }
 
   // Pedidos sem status em pedidos_status = 'aprovado' (entrada no pipeline)
   for (const p of pedidosData) {

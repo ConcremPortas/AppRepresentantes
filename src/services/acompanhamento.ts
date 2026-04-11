@@ -79,16 +79,26 @@ export async function fetchAcompanhamento(
   if (pedidosErr) throw pedidosErr;
   if (!pedidos?.length) return [];
 
+  // helper — divide array em chunks para evitar limite de URL do PostgREST
+  function chunk<T>(arr: T[], size: number): T[][] {
+    const out: T[][] = [];
+    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    return out;
+  }
+
   // 2. Status atual em pedidos_status — join por numero_pedido + coluna status_atual
   const numeros = pedidos.map(p => p.numero_pedido).filter(Boolean);
-  const { data: statusRows } = await supabase
-    .from('pedidos_status')
-    .select('numero_pedido, status_atual')
-    .in('numero_pedido', numeros);
-
   const statusByNumero = new Map<string, string>();
-  for (const s of (statusRows ?? []) as { numero_pedido: string; status_atual: string }[]) {
-    statusByNumero.set(s.numero_pedido, s.status_atual);
+
+  for (const batch of chunk(numeros, 200)) {
+    const { data: statusRows } = await supabase
+      .from('pedidos_status')
+      .select('numero_pedido, status_atual')
+      .in('numero_pedido', batch);
+
+    for (const s of (statusRows ?? []) as { numero_pedido: string; status_atual: string }[]) {
+      statusByNumero.set(s.numero_pedido, s.status_atual);
+    }
   }
 
   // 3. Histórico por numero_pedido
@@ -96,32 +106,32 @@ export async function fetchAcompanhamento(
 
   if (numeros.length > 0) {
     try {
-      const { data: logRows, error: logErr } = await supabase
-        .from('pedidos_status_historico')
-        .select('id, numero_pedido, status_novo, alterado_em, alterado_por, observacao')
-        .in('numero_pedido', numeros)
-        .order('alterado_em', { ascending: false });
+      // Busca histórico em lotes também
+      const allLogRows: {
+        id: string; numero_pedido: string; status_novo: string;
+        alterado_em: string; alterado_por: string | null; observacao: string | null;
+      }[] = [];
 
-      if (!logErr) {
-        for (const row of (logRows ?? []) as {
-          id: string;
-          numero_pedido: string;
-          status_novo: string;
-          alterado_em: string;
-          alterado_por: string | null;
-          observacao: string | null;
-        }[]) {
-          if (!logsMap[row.numero_pedido]) logsMap[row.numero_pedido] = [];
-          logsMap[row.numero_pedido].push({
-            id:            row.id,
-            numero_pedido: row.numero_pedido,
-            status:        mapStatus(row.status_novo),
-            status_db:     row.status_novo,
-            observacao:    row.observacao,
-            responsavel:   row.alterado_por,
-            created_at:    row.alterado_em,
-          });
-        }
+      for (const batch of chunk(numeros, 200)) {
+        const { data: logBatch, error: logErr } = await supabase
+          .from('pedidos_status_historico')
+          .select('id, numero_pedido, status_novo, alterado_em, alterado_por, observacao')
+          .in('numero_pedido', batch)
+          .order('alterado_em', { ascending: false });
+        if (!logErr && logBatch) allLogRows.push(...(logBatch as typeof allLogRows));
+      }
+
+      for (const row of allLogRows) {
+        if (!logsMap[row.numero_pedido]) logsMap[row.numero_pedido] = [];
+        logsMap[row.numero_pedido].push({
+          id:            row.id,
+          numero_pedido: row.numero_pedido,
+          status:        mapStatus(row.status_novo),
+          status_db:     row.status_novo,
+          observacao:    row.observacao,
+          responsavel:   row.alterado_por,
+          created_at:    row.alterado_em,
+        });
       }
     } catch {
       logsMap = {};
