@@ -65,7 +65,7 @@ export async function fetchDashboardStats(
   // ── 1. Buscar pedidos do representante (id + valor + data) ──
   let pedidosQuery = supabase
     .from('concrem_pedidos_venda')
-    .select('id, total_pedido_venda, data_emissao, representante');
+    .select('id, numero_pedido, total_pedido_venda, data_emissao, representante');
 
   if (!isAdmin && repCodes.length > 0) {
     pedidosQuery = pedidosQuery.in('representante', repCodes);
@@ -101,25 +101,23 @@ export async function fetchDashboardStats(
   const totalVendidoMesAnt = pedidosMesAnt.reduce((s, p) => s + (p.total_pedido_venda ?? 0), 0);
 
   // ── 3. Status do pipeline (pedidos_status) ──
-  const ids = pedidosData.map(p => p.id).filter(Boolean);
-
+  const numeros = pedidosData.map(p => p.numero_pedido).filter(Boolean);
   const { data: statusRows } = await supabase
     .from('pedidos_status')
-    .select('pedido_id, status')
-    .in('pedido_id', ids);
+    .select('numero_pedido, status_atual')
+    .in('numero_pedido', numeros);
 
   const pipeline: PipelineCounts = { ...EMPTY_PIPELINE };
 
-  // Mapeia pedido_id → status pipeline
-  const statusPorPedido = new Map<string, PedidoStatus>();
-  for (const row of statusRows ?? []) {
-    const mapped = mapStatus(row.status);
-    statusPorPedido.set(row.pedido_id, mapped);
+  // Mapeia numero_pedido → status pipeline
+  const statusPorNumero = new Map<string, PedidoStatus>();
+  for (const row of (statusRows ?? []) as { numero_pedido: string; status_atual: string }[]) {
+    statusPorNumero.set(row.numero_pedido, mapStatus(row.status_atual));
   }
 
   // Pedidos sem status em pedidos_status = 'aprovado' (entrada no pipeline)
   for (const p of pedidosData) {
-    const st = statusPorPedido.get(p.id) ?? 'aprovado';
+    const st = statusPorNumero.get(p.numero_pedido) ?? 'aprovado';
     pipeline[st] = (pipeline[st] ?? 0) + 1;
     pipeline.total += 1;
   }
@@ -127,7 +125,7 @@ export async function fetchDashboardStats(
   // ── 4. Faturado do mês — pedidos com status faturado/entrega/finalizado emitidos este mês ──
   const totalFaturadoMes = pedidosMes
     .filter(p => {
-      const st = statusPorPedido.get(p.id);
+      const st = statusPorNumero.get(p.numero_pedido);
       return st === 'faturado' || st === 'entrega' || st === 'finalizado';
     })
     .reduce((s, p) => s + (p.total_pedido_venda ?? 0), 0);

@@ -79,20 +79,19 @@ export async function fetchAcompanhamento(
   if (pedidosErr) throw pedidosErr;
   if (!pedidos?.length) return [];
 
-  // 2. Status atual em pedidos_status (pedido_id = concrem_pedidos_venda.id)
-  const ids = pedidos.map(p => p.id).filter(Boolean);
+  // 2. Status atual em pedidos_status — join por numero_pedido + coluna status_atual
+  const numeros = pedidos.map(p => p.numero_pedido).filter(Boolean);
   const { data: statusRows } = await supabase
     .from('pedidos_status')
-    .select('pedido_id, status')
-    .in('pedido_id', ids);
+    .select('numero_pedido, status_atual')
+    .in('numero_pedido', numeros);
 
-  const statusById = new Map<string, string>();
-  for (const s of statusRows ?? []) {
-    statusById.set(s.pedido_id, s.status);
+  const statusByNumero = new Map<string, string>();
+  for (const s of (statusRows ?? []) as { numero_pedido: string; status_atual: string }[]) {
+    statusByNumero.set(s.numero_pedido, s.status_atual);
   }
 
   // 3. Histórico por numero_pedido
-  const numeros = pedidos.map(p => p.numero_pedido).filter(Boolean);
   let logsMap: Record<string, PedidoStatusLog[]> = {};
 
   if (numeros.length > 0) {
@@ -138,7 +137,7 @@ export async function fetchAcompanhamento(
     data_emissao:       p.data_emissao       ?? '',
     total_pedido_venda: p.total_pedido_venda ?? 0,
     representante:      p.representante      ?? null,
-    status:             mapStatus(statusById.get(p.id) ?? null),
+    status:             mapStatus(statusByNumero.get(p.numero_pedido) ?? null),
     status_observacao:  null,
     status_updated_at:  null,
     logs:               logsMap[p.numero_pedido] ?? [],
