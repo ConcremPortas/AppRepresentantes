@@ -1,5 +1,8 @@
+// TURNSTILE: configure VITE_TURNSTILE_SITE_KEY no .env e faça deploy da Edge Function verificar-turnstile
 import { useState } from 'react';
+import Turnstile from 'react-turnstile';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/lib/supabase/client';
 import { Building2, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 
 export default function LoginPage() {
@@ -7,10 +10,34 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileError, setTurnstileError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setTurnstileError(null);
+
+    // Verificar token Turnstile na Edge Function antes do login
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('verificar-turnstile', {
+        body: { token: turnstileToken },
+      });
+      if (fnError || !data?.success) {
+        setTurnstileError(data?.error ?? 'Verificação de segurança falhou. Tente novamente.');
+        (window as any).turnstile?.reset();
+        setTurnstileToken(null);
+        return;
+      }
+    } catch {
+      setTurnstileError('Erro ao verificar segurança. Tente novamente.');
+      (window as any).turnstile?.reset();
+      setTurnstileToken(null);
+      return;
+    }
+
     await login({ email, password });
+    (window as any).turnstile?.reset();
+    setTurnstileToken(null);
   };
 
   return (
@@ -85,7 +112,14 @@ export default function LoginPage() {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="seu@email.com"
-                  className="w-full h-10 pl-10 pr-4 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[hsl(142,93%,8%)] focus:border-transparent"
+                  autoComplete="email"
+                  maxLength={254}
+                  disabled={loading}
+                  className={`w-full h-10 pl-10 pr-4 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed ${
+                    error && /email|usuário/i.test(error)
+                      ? 'border-red-400 focus:ring-red-400'
+                      : 'border-gray-300 focus:ring-[hsl(142,93%,8%)]'
+                  }`}
                   required
                 />
               </div>
@@ -100,7 +134,14 @@ export default function LoginPage() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full h-10 pl-10 pr-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[hsl(142,93%,8%)] focus:border-transparent"
+                  autoComplete="current-password"
+                  maxLength={128}
+                  disabled={loading}
+                  className={`w-full h-10 pl-10 pr-10 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed ${
+                    error && /senha|password/i.test(error)
+                      ? 'border-red-400 focus:ring-red-400'
+                      : 'border-gray-300 focus:ring-[hsl(142,93%,8%)]'
+                  }`}
                   required
                 />
                 <button
@@ -113,9 +154,22 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {turnstileError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+                {turnstileError}
+              </div>
+            )}
+
+            <Turnstile
+              sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+              onSuccess={(token) => setTurnstileToken(token)}
+              onExpire={() => setTurnstileToken(null)}
+              onError={() => setTurnstileToken(null)}
+            />
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !turnstileToken}
               className="w-full h-10 bg-[hsl(142,93%,8%)] text-white text-sm font-medium rounded-lg hover:bg-[hsl(142,93%,15%)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading && (

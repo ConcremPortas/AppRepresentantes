@@ -61,6 +61,14 @@ export async function createUsuario(
   return result;
 }
 
+export async function updateSenha(id: string, novaSenha: string): Promise<void> {
+  const { error } = await supabase.rpc('alterar_senha', {
+    p_id: id,
+    p_senha: novaSenha,
+  });
+  if (error) throw error;
+}
+
 export async function updateUsuario(
   id: string,
   fields: Partial<Pick<Usuario, 'nome' | 'admin' | 'operador' | 'ativo'>>

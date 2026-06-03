@@ -141,7 +141,7 @@ export default function AdminRepresentantesPage() {
   const [modal, setModal] = useState<(FormData & { id?: string }) | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<RepresentanteERP | null>(null);
 
-  const { data: reps = [], isLoading } = useQuery({
+  const { data: reps = [], isLoading, error: repsError } = useQuery({
     queryKey: ['admin-representantes'],
     queryFn: fetchRepresentantes,
   });
@@ -193,6 +193,12 @@ export default function AdminRepresentantesPage() {
           Adicionar
         </button>
       </div>
+
+      {repsError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
+          <strong>Erro ao carregar representantes:</strong> {(repsError as Error).message}
+        </div>
+      )}
 
       {/* Tabela */}
       <Card>

@@ -92,7 +92,7 @@ export async function fetchAcompanhamento(
 
   for (const batch of chunk(numeros, 200)) {
     const { data: statusRows } = await supabase
-      .from('pedidos_status')
+      .from('concrem_pedidos_status')
       .select('numero_pedido, status_atual')
       .in('numero_pedido', batch);
 
@@ -101,36 +101,40 @@ export async function fetchAcompanhamento(
     }
   }
 
-  // 3. Histórico por numero_pedido
+  // 3. Histórico por numero_pedido (status já é app-level no historico)
   let logsMap: Record<string, PedidoStatusLog[]> = {};
+  const statusFromHistorico = new Map<string, PedidoStatus>();
 
   if (numeros.length > 0) {
     try {
-      // Busca histórico em lotes também
       const allLogRows: {
-        id: string; numero_pedido: string; status_novo: string;
-        alterado_em: string; alterado_por: string | null; observacao: string | null;
+        id: string; numero_pedido: string; status: string;
+        created_at: string; responsavel: string | null; observacao: string | null;
       }[] = [];
 
       for (const batch of chunk(numeros, 200)) {
         const { data: logBatch, error: logErr } = await supabase
-          .from('pedidos_status_historico')
-          .select('id, numero_pedido, status_novo, alterado_em, alterado_por, observacao')
+          .from('concrem_pedidos_status_historico')
+          .select('id, numero_pedido, status, created_at, responsavel, observacao')
           .in('numero_pedido', batch)
-          .order('alterado_em', { ascending: false });
+          .order('created_at', { ascending: false });
         if (!logErr && logBatch) allLogRows.push(...(logBatch as typeof allLogRows));
       }
 
       for (const row of allLogRows) {
+        // Primeira ocorrência = mais recente (ordenado desc) = status atual
+        if (!statusFromHistorico.has(row.numero_pedido)) {
+          statusFromHistorico.set(row.numero_pedido, row.status as PedidoStatus);
+        }
         if (!logsMap[row.numero_pedido]) logsMap[row.numero_pedido] = [];
         logsMap[row.numero_pedido].push({
           id:            row.id,
           numero_pedido: row.numero_pedido,
-          status:        mapStatus(row.status_novo),
-          status_db:     row.status_novo,
+          status:        row.status as PedidoStatus,
+          status_db:     row.status,
           observacao:    row.observacao,
-          responsavel:   row.alterado_por,
-          created_at:    row.alterado_em,
+          responsavel:   row.responsavel,
+          created_at:    row.created_at,
         });
       }
     } catch {
@@ -138,7 +142,7 @@ export async function fetchAcompanhamento(
     }
   }
 
-  // 4. Merge
+  // 4. Merge — historico tem prioridade; fallback para pedidos_status (ERP)
   return pedidos.map(p => ({
     numero_pedido:      p.numero_pedido,
     cliente_nome:       p.cliente_nome       ?? p.numero_pedido,
@@ -147,7 +151,8 @@ export async function fetchAcompanhamento(
     data_emissao:       p.data_emissao       ?? '',
     total_pedido_venda: p.total_pedido_venda ?? 0,
     representante:      p.representante      ?? null,
-    status:             mapStatus(statusByNumero.get(p.numero_pedido) ?? null),
+    status:             statusFromHistorico.get(p.numero_pedido)
+                          ?? mapStatus(statusByNumero.get(p.numero_pedido) ?? null),
     status_observacao:  null,
     status_updated_at:  null,
     logs:               logsMap[p.numero_pedido] ?? [],

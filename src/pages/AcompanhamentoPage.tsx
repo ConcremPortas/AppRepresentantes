@@ -228,6 +228,13 @@ function PedidoCard({ pedido }: { pedido: PedidoAcompanhamento }) {
   );
 }
 
+// ─── Override temporário para apresentação (remover depois) ──
+const STATUS_OVERRIDE: Record<string, PedidoStatus> = {
+  '135732': 'mapeamento',
+  '135128': 'producao',
+  '133469': 'finalizado',
+};
+
 // ─── Filtros ───────────────────────────────────────────────
 type FilterView = 'todos' | PedidoStatus;
 
@@ -238,8 +245,20 @@ export default function AcompanhamentoPage() {
 
   const { data: pedidos = [], isLoading, isError, error } = useAcompanhamento();
 
+  const OVERRIDE_ORDER = ['133469', '135128', '135732'];
+
   const filtered = useMemo(() => {
-    let list = [...pedidos];
+    let list = pedidos.map(p =>
+      STATUS_OVERRIDE[p.numero_pedido]
+        ? { ...p, status: STATUS_OVERRIDE[p.numero_pedido], logs: [] }
+        : p,
+    );
+    // Coloca os pedidos de apresentação no topo na ordem definida
+    const overrideItems = OVERRIDE_ORDER
+      .map(n => list.find(p => p.numero_pedido === n))
+      .filter(Boolean) as typeof list;
+    const rest = list.filter(p => !STATUS_OVERRIDE[p.numero_pedido]);
+    list = [...overrideItems, ...rest];
     if (view !== 'todos') {
       list = list.filter(p => p.status === view);
     }

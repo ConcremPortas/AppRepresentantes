@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import type { User, Representante, Usuario, RepresentanteERP } from '@/types';
 
@@ -15,6 +15,7 @@ interface AuthContextValue extends AuthState {
   login: (credentials: { email: string; password: string }) => Promise<{ error: string | null }>;
   logout: () => void;
   updateRepresentante: (updates: Partial<Representante>) => void;
+  renewSession: () => void;
 }
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -23,19 +24,39 @@ const SESSION_KEY = 'concrem_session';
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 
 const MOCK_USER: User = {
-  id: 'rep-001',
+  id: 'mock-rep-001',
   email: 'joao.silva@concrem.com.br',
-  representante: {
-    id: 'rep-001',
-    nome: 'João Silva',
+  usuario: {
+    id: 'mock-rep-001',
+    nome: 'João Silva (Mock)',
     email: 'joao.silva@concrem.com.br',
-    telefone: '(11) 99999-0001',
-    regiao: 'São Paulo - Capital',
-    comissao_percentual: 3.5,
-    meta_mensal: 500000,
+    admin: false,
+    operador: false,
     ativo: true,
-    created_at: '2023-01-15T00:00:00Z',
+    created_at: '',
   },
+  representante: {
+    id: 'mock-rep-001',
+    nome: 'João Silva (Mock)',
+    email: 'joao.silva@concrem.com.br',
+    telefone: '',
+    regiao: '',
+    comissao_percentual: 3.5,
+    meta_mensal: 0,
+    ativo: true,
+    created_at: '',
+  },
+  repCodes: [
+    {
+      id: 'mock-rep-code-001',
+      codigo: 'REP-001',
+      nome_erp: 'João Silva (Mock)',
+      representante_erp: 'REP-001',
+      comissao_percentual: 3.5,
+      ativo: true,
+      created_at: '',
+    },
+  ],
 };
 
 // ─── Helpers de sessão ────────────────────────────────────────────────────────
@@ -47,16 +68,28 @@ interface StoredSession {
   admin: boolean;
   operador: boolean;
   repCodes: RepresentanteERP[];
+  expires_at: number;
 }
 
+const SESSION_DURATION = 8 * 60 * 60 * 1000; // 8 horas em ms
+
 function saveSession(s: StoredSession) {
-  localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+  localStorage.setItem(SESSION_KEY, JSON.stringify({
+    ...s,
+    expires_at: Date.now() + SESSION_DURATION,
+  }));
 }
 
 function loadSession(): StoredSession | null {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
-    return raw ? (JSON.parse(raw) as StoredSession) : null;
+    if (!raw) return null;
+    const stored = JSON.parse(raw) as StoredSession;
+    if (stored.expires_at && Date.now() > stored.expires_at) {
+      clearSession();
+      return null;
+    }
+    return stored;
   } catch {
     return null;
   }
@@ -135,12 +168,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const session: StoredSession = {
-      id:       data.id,
-      nome:     data.nome,
-      email:    data.email,
-      admin:    data.admin,
-      operador: data.operador ?? false,
-      repCodes: data.rep_codes ?? [],
+      id:         data.id,
+      nome:       data.nome,
+      email:      data.email,
+      admin:      data.admin,
+      operador:   data.operador ?? false,
+      repCodes:   data.rep_codes ?? [],
+      expires_at: Date.now() + SESSION_DURATION,
     };
 
     saveSession(session);
@@ -152,6 +186,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearSession();
     setAuthState({ user: null, loading: false, error: null });
   }, []);
+
+  const renewSession = useCallback(() => {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return;
+    try {
+      const stored = JSON.parse(raw) as StoredSession;
+      localStorage.setItem(SESSION_KEY, JSON.stringify({
+        ...stored,
+        expires_at: Date.now() + SESSION_DURATION,
+      }));
+    } catch {
+      // sessão corrompida — ignora
+    }
+  }, []);
+
+  // Verifica expiração a cada 60 segundos
+  useEffect(() => {
+    if (USE_MOCK) return;
+    const interval = setInterval(() => {
+      const stored = loadSession();
+      if (!stored) {
+        logout();
+      }
+    }, 60 * 1000);
+    return () => clearInterval(interval);
+  }, [logout]);
+
+  // Renova sessão por atividade do usuário (throttle de 5 minutos)
+  const lastRenewRef = useRef<number>(0);
+  useEffect(() => {
+    if (USE_MOCK) return;
+    const THROTTLE = 5 * 60 * 1000;
+    const handleActivity = () => {
+      const now = Date.now();
+      if (now - lastRenewRef.current > THROTTLE) {
+        lastRenewRef.current = now;
+        renewSession();
+      }
+    };
+    window.addEventListener('mousemove', handleActivity);
+    window.addEventListener('keydown', handleActivity);
+    window.addEventListener('click', handleActivity);
+    return () => {
+      window.removeEventListener('mousemove', handleActivity);
+      window.removeEventListener('keydown', handleActivity);
+      window.removeEventListener('click', handleActivity);
+    };
+  }, [renewSession]);
 
   const updateRepresentante = useCallback((updates: Partial<Representante>) => {
     setAuthState(prev => {
@@ -175,6 +257,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       logout,
       updateRepresentante,
+      renewSession,
     }}>
       {children}
     </AuthContext.Provider>

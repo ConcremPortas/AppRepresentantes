@@ -84,7 +84,7 @@ export async function fetchPedidosVenda(params: FetchPedidosParams): Promise<Fet
     const numeros = pedidos.map(p => p.numero_pedido).filter(Boolean);
 
     const { data: statusRows } = await supabase
-      .from('pedidos_status')
+      .from('concrem_pedidos_status')
       .select('numero_pedido, status_atual')
       .in('numero_pedido', numeros);
 

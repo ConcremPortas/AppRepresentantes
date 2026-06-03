@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, X, Check, ShieldCheck, User as UserIcon, ToggleLeft, ToggleRight, ClipboardCheck } from 'lucide-react';
+import { Plus, Pencil, X, Check, ShieldCheck, User as UserIcon, ToggleLeft, ToggleRight, ClipboardCheck, KeyRound, Eye, EyeOff } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { cn } from '@/utils/cn';
 import type { RepresentanteERP } from '@/types';
@@ -8,6 +8,7 @@ import {
   fetchUsuarios,
   createUsuario,
   updateUsuario,
+  updateSenha,
   linkRepresentante,
   unlinkRepresentante,
   type UsuarioComReps,
@@ -124,7 +125,7 @@ function CriarModal({
 
 // ─── Modal Editar Usuário ──────────────────────────────
 function EditarModal({
-  usuario, todosReps, onClose, saving, onUpdate, onLink, onUnlink,
+  usuario, todosReps, onClose, saving, onUpdate, onLink, onUnlink, onAlterarSenha, savingSenha, senhaError,
 }: {
   usuario: UsuarioComReps;
   todosReps: RepresentanteERP[];
@@ -133,9 +134,16 @@ function EditarModal({
   onUpdate: (nome: string, admin: boolean, operador: boolean) => void;
   onLink: (repId: string) => void;
   onUnlink: (repId: string) => void;
+  onAlterarSenha: (novaSenha: string) => void;
+  savingSenha: boolean;
+  senhaError?: string;
 }) {
   const [nome, setNome] = useState(usuario.nome);
   const [tipo, setTipo] = useState<TipoUsuario>(getTipo(usuario));
+  const [showSenha, setShowSenha] = useState(false);
+  const [novaSenha, setNovaSenha] = useState('');
+  const [confirmarSenha, setConfirmarSenha] = useState('');
+  const [mostrarSenhaTexto, setMostrarSenhaTexto] = useState(false);
 
   const linkedIds = new Set(usuario.reps.map(r => r.id));
   const ativos = todosReps.filter(r => r.ativo);
@@ -190,6 +198,72 @@ function EditarModal({
               )}
             </div>
           )}
+          {/* Alterar senha */}
+          <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => { setShowSenha(v => !v); setNovaSenha(''); setConfirmarSenha(''); }}
+              className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <KeyRound className="w-4 h-4 text-gray-400" />
+                Alterar senha
+              </span>
+              <span className={cn('text-xs px-2 py-0.5 rounded-full', showSenha ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500')}>
+                {showSenha ? 'cancelar' : 'alterar'}
+              </span>
+            </button>
+
+            {showSenha && (
+              <div className="px-4 pb-4 space-y-3 border-t border-gray-100 pt-3">
+                {senhaError && (
+                  <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{senhaError}</p>
+                )}
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Nova senha</label>
+                  <div className="relative">
+                    <input
+                      type={mostrarSenhaTexto ? 'text' : 'password'}
+                      value={novaSenha}
+                      onChange={e => setNovaSenha(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full h-9 px-3 pr-9 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[hsl(142,93%,8%)]"
+                    />
+                    <button type="button" onClick={() => setMostrarSenhaTexto(v => !v)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                      {mostrarSenhaTexto ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Confirmar senha</label>
+                  <input
+                    type={mostrarSenhaTexto ? 'text' : 'password'}
+                    value={confirmarSenha}
+                    onChange={e => setConfirmarSenha(e.target.value)}
+                    placeholder="••••••••"
+                    className={cn(
+                      'w-full h-9 px-3 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[hsl(142,93%,8%)]',
+                      confirmarSenha && novaSenha !== confirmarSenha ? 'border-red-300' : 'border-gray-300'
+                    )}
+                  />
+                  {confirmarSenha && novaSenha !== confirmarSenha && (
+                    <p className="text-[10px] text-red-500 mt-1">As senhas não coincidem</p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onAlterarSenha(novaSenha)}
+                  disabled={savingSenha || !novaSenha || novaSenha !== confirmarSenha}
+                  className="w-full h-9 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
+                >
+                  {savingSenha && <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                  <KeyRound className="w-3.5 h-3.5" />
+                  Confirmar nova senha
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100 flex-shrink-0">
@@ -236,8 +310,9 @@ export default function AdminUsuariosPage() {
   const [showCriar, setShowCriar] = useState(false);
   const [editando, setEditando]   = useState<UsuarioComReps | null>(null);
   const [criarError, setCriarError] = useState('');
+  const [senhaError, setSenhaError] = useState('');
 
-  const { data: usuarios = [], isLoading } = useQuery({
+  const { data: usuarios = [], isLoading, error: usuariosError } = useQuery({
     queryKey: ['admin-usuarios'],
     queryFn: fetchUsuarios,
   });
@@ -278,6 +353,12 @@ export default function AdminUsuariosPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-usuarios'] }),
   });
 
+  const senhaMutation = useMutation({
+    mutationFn: ({ id, novaSenha }: { id: string; novaSenha: string }) => updateSenha(id, novaSenha),
+    onSuccess: () => setSenhaError(''),
+    onError: (err: Error) => setSenhaError(err.message),
+  });
+
   const usuarioEditandoAtualizado = editando
     ? usuarios.find(u => u.id === editando.id) ?? editando
     : null;
@@ -297,6 +378,12 @@ export default function AdminUsuariosPage() {
           Adicionar
         </button>
       </div>
+
+      {usuariosError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
+          <strong>Erro ao carregar usuários:</strong> {(usuariosError as Error).message}
+        </div>
+      )}
 
       <Card>
         <CardContent className="p-0">
@@ -374,11 +461,14 @@ export default function AdminUsuariosPage() {
         <EditarModal
           usuario={usuarioEditandoAtualizado}
           todosReps={todosReps}
-          onClose={() => setEditando(null)}
+          onClose={() => { setEditando(null); setSenhaError(''); }}
           saving={updateMutation.isPending}
           onUpdate={(nome, admin, operador) => updateMutation.mutate({ id: usuarioEditandoAtualizado.id, nome, admin, operador })}
           onLink={repId => linkMutation.mutate({ usuarioId: usuarioEditandoAtualizado.id, repId })}
           onUnlink={repId => unlinkMutation.mutate({ usuarioId: usuarioEditandoAtualizado.id, repId })}
+          onAlterarSenha={novaSenha => senhaMutation.mutate({ id: usuarioEditandoAtualizado.id, novaSenha })}
+          savingSenha={senhaMutation.isPending}
+          senhaError={senhaError}
         />
       )}
     </div>

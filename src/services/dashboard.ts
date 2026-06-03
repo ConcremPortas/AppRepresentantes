@@ -100,7 +100,7 @@ export async function fetchDashboardStats(
   const totalVendidoMes    = pedidosMes.reduce((s, p) => s + (p.total_pedido_venda ?? 0), 0);
   const totalVendidoMesAnt = pedidosMesAnt.reduce((s, p) => s + (p.total_pedido_venda ?? 0), 0);
 
-  // ── 3. Status do pipeline (pedidos_status) ──
+  // ── 3. Status do pipeline (concrem_pedidos_status) ──
   const numeros = pedidosData.map(p => p.numero_pedido).filter(Boolean);
 
   // Busca em lotes de 200 para evitar limite de URL do PostgREST
@@ -108,7 +108,7 @@ export async function fetchDashboardStats(
   for (let i = 0; i < numeros.length; i += 200) {
     const batch = numeros.slice(i, i + 200);
     const { data: statusRows } = await supabase
-      .from('pedidos_status')
+      .from('concrem_pedidos_status')
       .select('numero_pedido, status_atual')
       .in('numero_pedido', batch);
     for (const row of (statusRows ?? []) as { numero_pedido: string; status_atual: string }[]) {
