@@ -5,6 +5,7 @@ import { formatDate, formatCurrency, formatCurrencyK } from '@/utils/formatters'
 import Avatar from '@/components/ui/Avatar';
 import { FilterBar, FilterChip } from '@/components/ui/FilterBar';
 import SearchInput from '@/components/ui/SearchInput';
+import PageContainer from '@/components/ui/PageContainer';
 import {
   AlertTriangle, Clock, CheckCircle2, XCircle, ThumbsUp, ThumbsDown, FileDown,
   Loader2, X, Check, Package, DollarSign, Award, Hourglass, TrendingUp,
@@ -1019,7 +1020,7 @@ export default function AprovacoesPage() {
   }
 
   return (
-    <div className="p-4 sm:p-5 space-y-4 overflow-x-hidden" style={{ paddingBottom: selected.size > 0 ? '7rem' : undefined }}>
+    <PageContainer bottomBar={selected.size > 0}>
       <ToastStack toasts={toasts} />
 
       {/* Header */}
@@ -1113,7 +1114,7 @@ export default function AprovacoesPage() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 30 }}
-            className="fixed left-4 right-4 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-40 bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] lg:bottom-6"
+            className="fixed left-4 right-4 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-40 bottom-[calc(var(--nav-h)+var(--safe-bottom)+1rem)] lg:bottom-6"
           >
             <div className="flex items-center gap-3 rounded-2xl bg-gray-900 text-white shadow-2xl px-4 py-3">
               <span className="text-sm font-medium tabular-nums whitespace-nowrap">
@@ -1182,6 +1183,6 @@ export default function AprovacoesPage() {
           onRejeitar={(id, motivo) => rejeitarMut.mutate({ id, motivo })}
         />
       )}
-    </div>
+    </PageContainer>
   );
 }

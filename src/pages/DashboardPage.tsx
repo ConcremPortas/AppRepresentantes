@@ -7,6 +7,7 @@ import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { useRepresentantesUnicos } from '@/hooks/usePedidosVenda';
 import { formatCurrency, formatCurrencyK, formatDate, formatDateLong } from '@/utils/formatters';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import PageContainer from '@/components/ui/PageContainer';
 import Select from '@/components/ui/Select';
 import {
   AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -613,7 +614,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-5 w-full overflow-x-hidden">
+    <PageContainer space="lg">
 
       {/* ── Header ── */}
       <div>
@@ -930,9 +931,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </Reveal>
-
-      {/* espaçador para respiro no fim */}
-      <div className="h-2" />
-    </div>
+    </PageContainer>
   );
 }

@@ -9,7 +9,8 @@ function LayoutInner() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    // h-dvh: usa a altura REAL da viewport no mobile (sem o bug da barra do navegador)
+    <div className="flex h-dvh bg-gray-50 overflow-hidden">
       {/* Sidebar (gerencia próprio overlay mobile) */}
       <Sidebar
         mobileOpen={mobileOpen}
@@ -19,7 +20,7 @@ function LayoutInner() {
       {/* Main content */}
       <div className="flex flex-col flex-1 overflow-hidden min-w-0">
         <Header onMenuClick={() => setMobileOpen(true)} />
-        <main className="flex-1 overflow-y-auto lg:pb-0" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
+        <main className="app-main-scroll flex-1 overflow-y-auto">
           <Outlet />
         </main>
       </div>

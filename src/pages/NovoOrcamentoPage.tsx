@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import Select from '@/components/ui/Select';
 import DatePicker from '@/components/ui/DatePicker';
+import PageContainer from '@/components/ui/PageContainer';
+import StickyActionBar from '@/components/ui/StickyActionBar';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/hooks/useAuth';
 import { useCarteira, useClientePedidos } from '@/hooks/useCarteira';
@@ -728,10 +730,7 @@ export default function NovoOrcamentoPage() {
   };
 
   return (
-    <div
-      className="p-4 sm:p-5 overflow-x-hidden"
-      style={{ paddingBottom: 'calc(10rem + env(safe-area-inset-bottom, 0px))' }}
-    >
+    <PageContainer bottomBar>
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
         <button
@@ -1076,7 +1075,7 @@ export default function NovoOrcamentoPage() {
               <Receipt className="w-4 h-4 text-gray-400" />
               <h3 className="text-sm font-semibold text-gray-900">Resumo do Orçamento</h3>
             </div>
-            <div className="p-4 pt-3 max-h-[calc(100vh-14rem)] overflow-y-auto scrollbar-thin">
+            <div className="p-4 pt-3 max-h-[calc(100dvh-14rem)] overflow-y-auto scrollbar-thin">
               <SummaryContent {...summaryProps} />
             </div>
           </div>
@@ -1084,9 +1083,8 @@ export default function NovoOrcamentoPage() {
       </div>
 
       {/* ═══ Barra inferior fixa ═══ */}
-      <div
-        className="fixed left-0 right-0 bg-white/95 backdrop-blur border-t border-gray-200 px-4 py-3 flex items-center justify-between gap-3 z-40 lg:left-64 bottom-[calc(4rem+env(safe-area-inset-bottom,0px))] lg:bottom-0"
-      >
+      <StickyActionBar>
+        <div className="flex items-center justify-between gap-3">
         <div className="text-sm text-gray-600 min-w-0 flex-1">
           <div className="truncate">
             {itens.length > 0
@@ -1129,7 +1127,8 @@ export default function NovoOrcamentoPage() {
             <span className="sm:hidden">Enviar</span>
           </button>
         </div>
-      </div>
+        </div>
+      </StickyActionBar>
 
       {/* Erro */}
       {saveMut.isError && (
@@ -1219,6 +1218,6 @@ export default function NovoOrcamentoPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

@@ -4,7 +4,9 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { formatDate, formatCurrency, formatCurrencyK } from '@/utils/formatters';
 import SearchInput from '@/components/ui/SearchInput';
 import Pagination from '@/components/ui/Pagination';
+import PageContainer from '@/components/ui/PageContainer';
 import Avatar from '@/components/ui/Avatar';
+import { useIsDesktop } from '@/hooks/useMediaQuery';
 import {
   Plus, FileText, Clock, CheckCircle, XCircle, Send, RotateCcw, Pencil, Trash2,
   AlertTriangle, FileDown, Copy, LayoutGrid, List, SquareKanban, Package,
@@ -387,6 +389,9 @@ export default function OrcamentosPage() {
   const [confirmExcluir, setConfirmExcluir] = useState<string | null>(null);
 
   useEffect(() => { localStorage.setItem('orc_view', view); }, [view]);
+  // No mobile a tabela não é a visão principal → cai para cards.
+  const isDesktop = useIsDesktop();
+  const effView: ViewMode = view === 'table' && !isDesktop ? 'cards' : view;
 
   const qc = useQueryClient();
   const { data: orcamentos = [], isLoading } = useOrcamentos();
@@ -487,7 +492,7 @@ export default function OrcamentosPage() {
   ];
 
   return (
-    <div className="p-4 sm:p-5 space-y-4 overflow-x-hidden">
+    <PageContainer>
 
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
@@ -531,7 +536,7 @@ export default function OrcamentosPage() {
           <SearchInput value={search} onChange={setSearch} placeholder="Buscar por nº, cliente, obra..." />
         </div>
         <div className="inline-flex rounded-xl bg-gray-100 p-0.5 flex-shrink-0 touch-compact">
-          {VIEWS.map(v => (
+          {VIEWS.filter(v => v.key !== 'table' || isDesktop).map(v => (
             <button
               key={v.key}
               type="button"
@@ -539,7 +544,7 @@ export default function OrcamentosPage() {
               title={v.label}
               className={cn(
                 'flex items-center gap-1.5 px-2.5 sm:px-3 h-9 text-xs font-medium rounded-[10px] transition-colors',
-                view === v.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700',
+                effView === v.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700',
               )}
             >
               <v.icon className="w-4 h-4" />
@@ -569,9 +574,9 @@ export default function OrcamentosPage() {
             Criar primeiro orçamento
           </Link>
         </div>
-      ) : view === 'kanban' ? (
+      ) : effView === 'kanban' ? (
         <QuoteKanban orcs={filtered} a={actions} />
-      ) : view === 'table' ? (
+      ) : effView === 'table' ? (
         <>
           <QuoteTable orcs={paginated} a={actions} />
           <Pagination currentPage={page} totalPages={totalPages} onPageChange={goToPage} />
@@ -646,6 +651,6 @@ export default function OrcamentosPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

@@ -59,10 +59,16 @@ export default function LoginPage() {
   const passInvalid = !!error && /senha|password/i.test(error);
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#06110A] text-white">
+    <div className="relative min-h-dvh overflow-hidden bg-[#06110A] text-white">
       <CinematicBackdrop reduce={reduce} />
 
-      <div className="relative min-h-screen flex flex-col items-center justify-center px-5 py-10 sm:py-14">
+      <div
+        className="relative min-h-dvh flex flex-col items-center justify-center px-5"
+        style={{
+          paddingTop: 'max(2.5rem, env(safe-area-inset-top, 0px))',
+          paddingBottom: 'max(2.5rem, env(safe-area-inset-bottom, 0px))',
+        }}
+      >
         <div className="w-full max-w-[400px]">
           {/* ── Marca ── */}
           <motion.div

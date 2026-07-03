@@ -6,6 +6,7 @@ import {
   Sparkles, Volume2, Vibrate, MessageSquare, Lock, Play, Trash2, Inbox,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import PageContainer from '@/components/ui/PageContainer';
 import { useAuth } from '@/hooks/useAuth';
 import { useAlertas } from '@/hooks/useAlertas';
 import { formatDate } from '@/utils/formatters';
@@ -100,7 +101,7 @@ function AlertaCard({ alerta, lida, onLer, onExcluir, onAcao, index }: {
             'w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0',
             lida ? 'bg-gray-100 text-gray-400' : prio.chip,
           )}>
-            <Icon className="w-4.5 h-4.5 w-[18px] h-[18px]" />
+            <Icon className="w-[18px] h-[18px]" />
           </span>
 
           <div className="flex-1 min-w-0">
@@ -419,14 +420,14 @@ export default function AlertasPage() {
 
   if (view === 'prefs') {
     return (
-      <div className="p-4 sm:p-5 max-w-5xl mx-auto pb-24">
+      <PageContainer size="lg" space="none">
         <PreferenciasView onVoltar={() => setView('lista')} />
-      </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="p-4 sm:p-5 space-y-5 max-w-5xl mx-auto pb-24">
+    <PageContainer size="lg" space="lg">
 
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
@@ -455,7 +456,7 @@ export default function AlertasPage() {
               title="Marcar todas como lidas"
               className="w-9 h-9 rounded-xl flex items-center justify-center text-gray-400 hover:text-[hsl(142,93%,8%)] hover:bg-gray-50 transition-colors"
             >
-              <CheckCheck className="w-4.5 h-4.5 w-[18px] h-[18px]" />
+              <CheckCheck className="w-[18px] h-[18px]" />
             </button>
           )}
           <button
@@ -561,6 +562,6 @@ export default function AlertasPage() {
           Arraste um alerta para a esquerda para excluir
         </p>
       )}
-    </div>
+    </PageContainer>
   );
 }

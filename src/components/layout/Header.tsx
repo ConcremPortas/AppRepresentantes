@@ -41,7 +41,10 @@ export default function Header({ onMenuClick }: HeaderProps) {
   void isCollapsed;
 
   return (
-    <header className="bg-[#0D2012] lg:bg-white border-b border-[#1a4025] lg:border-gray-200 flex-shrink-0">
+    <header
+      className="bg-[#0D2012] lg:bg-white border-b border-[#1a4025] lg:border-gray-200 flex-shrink-0"
+      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+    >
       <div className="px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           {/* Hamburger mobile */}

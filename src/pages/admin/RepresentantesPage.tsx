@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, Check, X, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
+import PageContainer from '@/components/ui/PageContainer';
 import { cn } from '@/utils/cn';
 import type { RepresentanteERP } from '@/types';
 import {
@@ -176,7 +177,7 @@ export default function AdminRepresentantesPage() {
   });
 
   return (
-    <div className="p-4 space-y-4">
+    <PageContainer size="lg">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -305,6 +306,6 @@ export default function AdminRepresentantesPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

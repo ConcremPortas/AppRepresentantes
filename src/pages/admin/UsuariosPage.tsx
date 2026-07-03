@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, X, Check, ShieldCheck, User as UserIcon, ToggleLeft, ToggleRight, ClipboardCheck, KeyRound, Eye, EyeOff } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
+import PageContainer from '@/components/ui/PageContainer';
 import { cn } from '@/utils/cn';
 import type { RepresentanteERP } from '@/types';
 import {
@@ -378,7 +379,7 @@ export default function AdminUsuariosPage() {
     : null;
 
   return (
-    <div className="p-4 space-y-4">
+    <PageContainer size="lg">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Usuários</h1>
@@ -486,6 +487,6 @@ export default function AdminUsuariosPage() {
           senhaSucesso={senhaSucesso}
         />
       )}
-    </div>
+    </PageContainer>
   );
 }

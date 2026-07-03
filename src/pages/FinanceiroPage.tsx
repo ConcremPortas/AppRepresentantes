@@ -4,6 +4,7 @@ import { formatDate, formatCurrencyK } from '@/utils/formatters';
 import Select from '@/components/ui/Select';
 import SearchInput from '@/components/ui/SearchInput';
 import Pagination from '@/components/ui/Pagination';
+import PageContainer from '@/components/ui/PageContainer';
 import {
   FileText, Receipt, Download, Paperclip, X, Check, AlertTriangle, SlidersHorizontal,
   List, LayoutGrid, Activity, ChevronRight, CheckCircle2, CircleDashed, Sparkles,
@@ -12,6 +13,8 @@ import {
 import { cn } from '@/utils/cn';
 import { useNavigate } from 'react-router-dom';
 import { useFinanceiro } from '@/hooks/useFinanceiro';
+import { useIsDesktop } from '@/hooks/useMediaQuery';
+import MobileBottomSheet from '@/components/ui/MobileBottomSheet';
 import type { PedidoFinanceiro, AnexoItem } from '@/services/financeiro';
 
 const PAGE = 24;
@@ -484,6 +487,9 @@ export default function FinanceiroPage() {
     return s === 'table' || s === 'timeline' ? s : 'cards';
   });
   useEffect(() => { localStorage.setItem('fin_view', view); }, [view]);
+  // No mobile a tabela não é a visão principal → cai para cards.
+  const isDesktop = useIsDesktop();
+  const effView: ViewMode = view === 'table' && !isDesktop ? 'cards' : view;
 
   const [busca, setBusca] = useState('');
   const [statusFiltro, setStatusFiltro] = useState<'' | DocStatus>('');
@@ -611,7 +617,7 @@ export default function FinanceiroPage() {
   ];
 
   return (
-    <div className="p-4 sm:p-5 space-y-4 overflow-x-hidden pb-24">
+    <PageContainer>
       {/* Toasts */}
       <div className="fixed top-4 right-4 z-[70] space-y-2 pointer-events-none">
         <AnimatePresence>
@@ -676,9 +682,9 @@ export default function FinanceiroPage() {
           <SlidersHorizontal className="w-4 h-4" /><span className="hidden sm:inline">Filtros</span>
         </button>
         <div className="inline-flex rounded-xl bg-gray-100 p-0.5 flex-shrink-0 touch-compact">
-          {VIEWS.map(v => (
+          {VIEWS.filter(v => v.key !== 'table' || isDesktop).map(v => (
             <button key={v.key} type="button" onClick={() => setView(v.key)} title={v.label}
-              className={cn('flex items-center gap-1.5 px-2.5 sm:px-3 h-9 text-xs font-medium rounded-[10px] transition-colors', view === v.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}>
+              className={cn('flex items-center gap-1.5 px-2.5 sm:px-3 h-9 text-xs font-medium rounded-[10px] transition-colors', effView === v.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}>
               <v.icon className="w-4 h-4" /><span className="hidden md:inline">{v.label}</span>
             </button>
           ))}
@@ -702,9 +708,9 @@ export default function FinanceiroPage() {
           <p className="text-sm text-gray-400">Nenhum documento encontrado</p>
           {hasFilters && <button onClick={clearFilters} className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-[hsl(142,93%,8%)] hover:underline"><X className="w-3.5 h-3.5" />Limpar filtros</button>}
         </div>
-      ) : view === 'timeline' ? (
+      ) : effView === 'timeline' ? (
         <TimelineView pedidos={filtrados} onOpen={setSelected} />
-      ) : view === 'table' ? (
+      ) : effView === 'table' ? (
         <>
           <TableView pedidos={paginados} onOpen={setSelected} />
           <div className="mt-3"><Pagination currentPage={page} totalPages={totalPages} onPageChange={p => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }); }} /></div>
@@ -719,34 +725,26 @@ export default function FinanceiroPage() {
       )}
 
       {/* Bottom sheet de filtros */}
-      <AnimatePresence>
-        {showFilters && (
-          <div className="fixed inset-0 z-50">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowFilters(false)} />
-            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto sm:max-w-md sm:mx-auto sm:rounded-3xl sm:bottom-4 sm:inset-x-4">
-              <div className="sticky top-0 bg-white flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                <h3 className="font-bold text-gray-900">Filtros</h3>
-                <button onClick={() => setShowFilters(false)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100"><X className="w-5 h-5" /></button>
-              </div>
-              <div className="p-5 space-y-4">
-                <div><label className="text-xs font-semibold text-gray-500 mb-1 block">Status documental</label>
-                  <Select value={statusFiltro} onChange={v => setStatusFiltro(v as '' | DocStatus)} placeholder="Todos"
-                    options={[{ value: '', label: 'Todos' }, { value: 'completo', label: 'Completo' }, { value: 'parcial', label: 'Parcial' }, { value: 'pendente', label: 'Pendente' }, { value: 'sem', label: 'Sem docs' }]} /></div>
-                {reps.length > 1 && (
-                  <div><label className="text-xs font-semibold text-gray-500 mb-1 block">Representante</label>
-                    <Select value={representante} onChange={setRepresentante} placeholder="Todos"
-                      options={[{ value: '', label: 'Todos' }, ...reps.map(r => ({ value: r, label: r }))]} /></div>
-                )}
-              </div>
-              <div className="sticky bottom-0 bg-white flex gap-2 p-4 border-t border-gray-100">
-                <button onClick={clearFilters} className="h-11 px-4 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">Limpar</button>
-                <button onClick={() => setShowFilters(false)} className="flex-1 h-11 rounded-xl bg-[hsl(142,93%,8%)] text-white text-sm font-medium hover:bg-[hsl(142,93%,15%)] transition-colors">Aplicar</button>
-              </div>
-            </motion.div>
-          </div>
+      <MobileBottomSheet
+        open={showFilters}
+        onClose={() => setShowFilters(false)}
+        title="Filtros"
+        footer={
+          <>
+            <button onClick={clearFilters} className="h-11 px-4 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">Limpar</button>
+            <button onClick={() => setShowFilters(false)} className="flex-1 h-11 rounded-xl bg-[hsl(142,93%,8%)] text-white text-sm font-medium hover:bg-[hsl(142,93%,15%)] transition-colors">Aplicar</button>
+          </>
+        }
+      >
+        <div><label className="text-xs font-semibold text-gray-500 mb-1 block">Status documental</label>
+          <Select value={statusFiltro} onChange={v => setStatusFiltro(v as '' | DocStatus)} placeholder="Todos"
+            options={[{ value: '', label: 'Todos' }, { value: 'completo', label: 'Completo' }, { value: 'parcial', label: 'Parcial' }, { value: 'pendente', label: 'Pendente' }, { value: 'sem', label: 'Sem docs' }]} /></div>
+        {reps.length > 1 && (
+          <div><label className="text-xs font-semibold text-gray-500 mb-1 block">Representante</label>
+            <Select value={representante} onChange={setRepresentante} placeholder="Todos"
+              options={[{ value: '', label: 'Todos' }, ...reps.map(r => ({ value: r, label: r }))]} /></div>
         )}
-      </AnimatePresence>
+      </MobileBottomSheet>
 
       {selected && (
         <DocDrawer
@@ -757,6 +755,6 @@ export default function FinanceiroPage() {
           onConferir={() => toggleConferido(selected.numero_pedido)}
         />
       )}
-    </div>
+    </PageContainer>
   );
 }

@@ -1,9 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { formatCurrency, formatCurrencyK } from '@/utils/formatters';
 import Select from '@/components/ui/Select';
 import SearchInput from '@/components/ui/SearchInput';
 import Pagination from '@/components/ui/Pagination';
+import PageContainer from '@/components/ui/PageContainer';
+import MobileBottomSheet from '@/components/ui/MobileBottomSheet';
 import {
   CheckCircle2, Unlock, Map as MapIcon, Wrench, Handshake, Factory, FileCheck2, Truck,
   PackageCheck, X, Check, SlidersHorizontal, LayoutList, SquareKanban, Activity,
@@ -647,7 +649,7 @@ export default function AcompanhamentoPage() {
   }
 
   return (
-    <div className="p-4 sm:p-5 space-y-4 overflow-x-hidden pb-24">
+    <PageContainer>
       <div>
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Central de Acompanhamento</h1>
         <p className="text-sm text-gray-500 mt-0.5">{isLoading ? 'Carregando...' : `${kpis.total.toLocaleString('pt-BR')} pedido(s) em acompanhamento`}</p>
@@ -742,34 +744,26 @@ export default function AcompanhamentoPage() {
       )}
 
       {/* Bottom sheet de filtros */}
-      <AnimatePresence>
-        {showFilters && (
-          <div className="fixed inset-0 z-50">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowFilters(false)} />
-            <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto sm:max-w-md sm:mx-auto sm:rounded-3xl sm:bottom-4 sm:inset-x-4">
-              <div className="sticky top-0 bg-white flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                <h3 className="font-bold text-gray-900">Filtros</h3>
-                <button onClick={() => setShowFilters(false)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100"><X className="w-5 h-5" /></button>
-              </div>
-              <div className="p-5 space-y-4">
-                <div><label className="text-xs font-semibold text-gray-500 mb-1 block">Status</label>
-                  <Select value={statusFiltro} onChange={v => setStatusFiltro(v as '' | PedidoStatus)} placeholder="Todos"
-                    options={[{ value: '', label: 'Todos os status' }, ...STEPS.map(s => ({ value: s.key, label: s.label }))]} /></div>
-                <div><label className="text-xs font-semibold text-gray-500 mb-1 block">Representante</label>
-                  <Select value={representante} onChange={setRepresentante} placeholder="Todos"
-                    options={[{ value: '', label: 'Todos' }, ...reps.map(r => ({ value: r, label: r }))]} /></div>
-              </div>
-              <div className="sticky bottom-0 bg-white flex gap-2 p-4 border-t border-gray-100">
-                <button onClick={clearFilters} className="h-11 px-4 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">Limpar</button>
-                <button onClick={() => setShowFilters(false)} className="flex-1 h-11 rounded-xl bg-[hsl(142,93%,8%)] text-white text-sm font-medium hover:bg-[hsl(142,93%,15%)] transition-colors">Aplicar</button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <MobileBottomSheet
+        open={showFilters}
+        onClose={() => setShowFilters(false)}
+        title="Filtros"
+        footer={
+          <>
+            <button onClick={clearFilters} className="h-11 px-4 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">Limpar</button>
+            <button onClick={() => setShowFilters(false)} className="flex-1 h-11 rounded-xl bg-[hsl(142,93%,8%)] text-white text-sm font-medium hover:bg-[hsl(142,93%,15%)] transition-colors">Aplicar</button>
+          </>
+        }
+      >
+        <div><label className="text-xs font-semibold text-gray-500 mb-1 block">Status</label>
+          <Select value={statusFiltro} onChange={v => setStatusFiltro(v as '' | PedidoStatus)} placeholder="Todos"
+            options={[{ value: '', label: 'Todos os status' }, ...STEPS.map(s => ({ value: s.key, label: s.label }))]} /></div>
+        <div><label className="text-xs font-semibold text-gray-500 mb-1 block">Representante</label>
+          <Select value={representante} onChange={setRepresentante} placeholder="Todos"
+            options={[{ value: '', label: 'Todos' }, ...reps.map(r => ({ value: r, label: r }))]} /></div>
+      </MobileBottomSheet>
 
       {selected && <PedidoDrawer pedido={selected} hoje={hoje} onClose={() => setSelected(null)} />}
-    </div>
+    </PageContainer>
   );
 }

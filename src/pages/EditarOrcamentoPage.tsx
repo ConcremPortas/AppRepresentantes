@@ -5,6 +5,8 @@ import { ChevronDown, ChevronUp, Search, Plus, Trash2, Package, X, ArrowLeft, Sa
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import Select from '@/components/ui/Select';
 import DatePicker from '@/components/ui/DatePicker';
+import PageContainer from '@/components/ui/PageContainer';
+import StickyActionBar from '@/components/ui/StickyActionBar';
 import { cn } from '@/utils/cn';
 import { useCarteira } from '@/hooks/useCarteira';
 import { useProdutos } from '@/hooks/useProdutos';
@@ -427,7 +429,7 @@ export default function EditarOrcamentoPage() {
   }
 
   return (
-    <div className="p-4 space-y-4 pb-32">
+    <PageContainer bottomBar>
 
       {/* Header */}
       <div className="flex items-center gap-3">
@@ -701,10 +703,8 @@ export default function EditarOrcamentoPage() {
       </Card>
 
       {/* ── Barra inferior fixa — acima do MobileNav ── */}
-      <div
-        className="fixed left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-between gap-3 z-40 lg:left-64"
-        style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom, 0px))' }}
-      >
+      <StickyActionBar>
+        <div className="flex items-center justify-between gap-3">
         <div className="text-sm text-gray-600 min-w-0 flex-1">
           <div className="truncate">
             {itens.length > 0
@@ -727,13 +727,14 @@ export default function EditarOrcamentoPage() {
             Salvar Alterações
           </button>
         </div>
-      </div>
+        </div>
+      </StickyActionBar>
 
       {saveMut.isError && (
         <div className="fixed bottom-20 right-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2 rounded-lg shadow-lg z-50">
           Erro ao salvar. Tente novamente.
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

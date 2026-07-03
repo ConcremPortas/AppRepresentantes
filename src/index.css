@@ -27,6 +27,12 @@
 }
 
 :root {
+  /* ── Tokens de layout (fonte única de verdade para responsividade) ── */
+  --nav-h: 4rem;           /* altura da MobileNav (h-16) */
+  --sidebar-w: 16rem;      /* largura da Sidebar expandida (w-64) */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+
   --status-aprovado-bg: hsl(134, 61%, 94%);
   --status-aprovado-fg: hsl(142, 93%, 20%);
   --status-enviado-bg: hsl(214, 100%, 94%);
@@ -53,6 +59,31 @@ body {
 }
 .safe-area-pt {
   padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* ── Área de rolagem principal: reserva a MobileNav + safe area no mobile,
+      zera no desktop (onde a MobileNav não existe). ── */
+.app-main-scroll {
+  padding-bottom: calc(var(--nav-h) + var(--safe-bottom) + 0.5rem);
+}
+@media (min-width: 1024px) {
+  .app-main-scroll { padding-bottom: 0; }
+}
+
+/* ── Barra de ações fixa (StickyActionBar): acima da MobileNav + safe area no
+      mobile; colada ao rodapé e alinhada após a Sidebar no desktop. ── */
+.app-sticky-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--nav-h) + var(--safe-bottom));
+  z-index: 40;
+}
+@media (min-width: 1024px) {
+  .app-sticky-bar {
+    left: var(--sidebar-w);
+    bottom: 0;
+  }
 }
 
 /* ── Touch targets mínimos ── */

@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { formatCurrency, formatDate, parseContatos } from '@/utils/formatters';
 import SearchInput from '@/components/ui/SearchInput';
 import Select from '@/components/ui/Select';
+import PageContainer from '@/components/ui/PageContainer';
 import { cn } from '@/utils/cn';
 import { useCarteira, useClientePedidos } from '@/hooks/useCarteira';
 import { parseDadosTabela } from '@/services/pedidosVenda';
@@ -596,7 +597,7 @@ export default function ClientesPage() {
   const hasFilters = !!(search || ufFilter);
 
   return (
-    <div className="p-4 sm:p-5 h-full overflow-x-hidden">
+    <PageContainer space="none">
       <div className="flex gap-4 items-start">
 
         {/* ── Coluna esquerda: lista de clientes ── */}
@@ -605,7 +606,7 @@ export default function ClientesPage() {
           'lg:sticky lg:top-4',
           selected && 'hidden lg:block',
         )}>
-          <div className="rounded-2xl bg-white border border-gray-200/70 shadow-sm flex flex-col lg:max-h-[calc(100vh-6rem)]">
+          <div className="rounded-2xl bg-white border border-gray-200/70 shadow-sm flex flex-col lg:max-h-[calc(100dvh-6rem)]">
             {/* Header */}
             <div className="p-4 pb-3 border-b border-gray-100">
               <h1 className="text-base font-bold text-gray-900 tracking-tight">Carteira de Clientes</h1>
@@ -679,6 +680,6 @@ export default function ClientesPage() {
           )}
         </div>
       </div>
-    </div>
+    </PageContainer>
   );
 }

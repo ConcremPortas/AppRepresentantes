@@ -6,6 +6,7 @@ import { formatCurrency, formatCurrencyK, formatDate } from '@/utils/formatters'
 import Select from '@/components/ui/Select';
 import SearchInput from '@/components/ui/SearchInput';
 import Pagination from '@/components/ui/Pagination';
+import PageContainer from '@/components/ui/PageContainer';
 import {
   AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -18,6 +19,8 @@ import {
 import { cn } from '@/utils/cn';
 import type { PedidoVenda } from '@/types';
 import { usePedidosCompleto, useRepresentantesUnicos, useSituacoesEntrega } from '@/hooks/usePedidosVenda';
+import { useIsDesktop } from '@/hooks/useMediaQuery';
+import MobileBottomSheet from '@/components/ui/MobileBottomSheet';
 import { getPedidoItens, fetchPedidoHistorico, CENTRAL_CAP } from '@/services/pedidosVenda';
 import {
   ETAPAS, ETAPA_META, etapaDe, temNF, temBoleto, faturadoOuAlem, docsPendentes,
@@ -497,6 +500,9 @@ export default function PedidosPage() {
     return s === 'table' || s === 'pipeline' ? s : 'cards';
   });
   useEffect(() => { localStorage.setItem('ped_view', view); }, [view]);
+  // No mobile a tabela não é a visão principal → cai para cards.
+  const isDesktop = useIsDesktop();
+  const effView: ViewMode = view === 'table' && !isDesktop ? 'cards' : view;
 
   // Busca inicial vinda de ?busca= (ex.: "Abrir pedido" na Central Financeira)
   const [searchParams] = useSearchParams();
@@ -647,7 +653,7 @@ export default function PedidosPage() {
   ];
 
   return (
-    <div className="p-4 sm:p-5 space-y-4 overflow-x-hidden pb-24">
+    <PageContainer>
 
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
@@ -774,10 +780,10 @@ export default function PedidosPage() {
           <span className="hidden sm:inline">Filtros</span>
         </button>
         <div className="inline-flex rounded-xl bg-gray-100 p-0.5 flex-shrink-0 touch-compact">
-          {VIEWS.map(v => (
+          {VIEWS.filter(v => v.key !== 'table' || isDesktop).map(v => (
             <button key={v.key} type="button" onClick={() => setView(v.key)} title={v.label}
               className={cn('flex items-center gap-1.5 px-2.5 sm:px-3 h-9 text-xs font-medium rounded-[10px] transition-colors',
-                view === v.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}>
+                effView === v.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700')}>
               <v.icon className="w-4 h-4" />
               <span className="hidden md:inline">{v.label}</span>
             </button>
@@ -809,9 +815,9 @@ export default function PedidosPage() {
         </div>
       ) : (
         <div className={cn(isFetching && 'opacity-60 pointer-events-none transition-opacity')}>
-          {view === 'pipeline' ? (
+          {effView === 'pipeline' ? (
             <PipelineView pedidos={filtrados} onOpen={setSelected} />
-          ) : view === 'table' ? (
+          ) : effView === 'table' ? (
             <>
               <TableView pedidos={paginados} onOpen={setSelected} />
               <div className="mt-3"><Pagination currentPage={page} totalPages={totalPages} onPageChange={p => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }); }} /></div>
@@ -828,49 +834,39 @@ export default function PedidosPage() {
       )}
 
       {/* Bottom sheet de filtros */}
-      <AnimatePresence>
-        {showFilters && (
-          <div className="fixed inset-0 z-50">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowFilters(false)} />
-            <motion.div
-              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto sm:max-w-md sm:mx-auto sm:rounded-3xl sm:bottom-4 sm:inset-x-4"
-            >
-              <div className="sticky top-0 bg-white flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                <h3 className="font-bold text-gray-900">Filtros</h3>
-                <button onClick={() => setShowFilters(false)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100"><X className="w-5 h-5" /></button>
-              </div>
-              <div className="p-5 space-y-4">
-                <div>
-                  <label className="text-xs font-semibold text-gray-500 mb-1 block">Cliente</label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input value={clienteInput} onChange={e => setClienteInput(e.target.value)} placeholder="Nome / fantasia..."
-                      className="w-full h-10 pl-9 pr-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[hsl(142,93%,8%)]" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><label className="text-xs font-semibold text-gray-500 mb-1 block">Ano</label>
-                    <Select value={ano} onChange={setAno} placeholder="Todos" options={[{ value: '', label: 'Todos' }, ...ANOS.map(a => ({ value: String(a), label: String(a) }))]} /></div>
-                  <div><label className="text-xs font-semibold text-gray-500 mb-1 block">Mês</label>
-                    <Select value={mes} onChange={setMes} placeholder="Todos" options={[{ value: '', label: 'Todos' }, ...MESES.map((m, i) => ({ value: String(i + 1), label: m }))]} /></div>
-                </div>
-                <div><label className="text-xs font-semibold text-gray-500 mb-1 block">Representante</label>
-                  <Select value={representante} onChange={setRepresentante} placeholder="Todos" options={[{ value: '', label: 'Todos' }, ...repsUnicos.map(r => ({ value: r, label: r }))]} /></div>
-                <div><label className="text-xs font-semibold text-gray-500 mb-1 block">Situação da entrega</label>
-                  <Select value={situacao} onChange={setSituacao} placeholder="Todas" options={[{ value: '', label: 'Todas' }, ...situacoes.map(s => ({ value: s, label: s }))]} /></div>
-              </div>
-              <div className="sticky bottom-0 bg-white flex gap-2 p-4 border-t border-gray-100">
-                <button onClick={() => { clearFilters(); }} className="h-11 px-4 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">Limpar</button>
-                <button onClick={() => { applySearch(); setShowFilters(false); }} className="flex-1 h-11 rounded-xl bg-[hsl(142,93%,8%)] text-white text-sm font-medium hover:bg-[hsl(142,93%,15%)] transition-colors">Aplicar filtros</button>
-              </div>
-            </motion.div>
+      <MobileBottomSheet
+        open={showFilters}
+        onClose={() => setShowFilters(false)}
+        title="Filtros"
+        footer={
+          <>
+            <button onClick={() => clearFilters()} className="h-11 px-4 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">Limpar</button>
+            <button onClick={() => { applySearch(); setShowFilters(false); }} className="flex-1 h-11 rounded-xl bg-[hsl(142,93%,8%)] text-white text-sm font-medium hover:bg-[hsl(142,93%,15%)] transition-colors">Aplicar filtros</button>
+          </>
+        }
+      >
+        <div>
+          <label className="text-xs font-semibold text-gray-500 mb-1 block">Cliente</label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input value={clienteInput} onChange={e => setClienteInput(e.target.value)} placeholder="Nome / fantasia..."
+              className="w-full h-10 pl-9 pr-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[hsl(142,93%,8%)]" />
           </div>
-        )}
-      </AnimatePresence>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div><label className="text-xs font-semibold text-gray-500 mb-1 block">Ano</label>
+            <Select value={ano} onChange={setAno} placeholder="Todos" options={[{ value: '', label: 'Todos' }, ...ANOS.map(a => ({ value: String(a), label: String(a) }))]} /></div>
+          <div><label className="text-xs font-semibold text-gray-500 mb-1 block">Mês</label>
+            <Select value={mes} onChange={setMes} placeholder="Todos" options={[{ value: '', label: 'Todos' }, ...MESES.map((m, i) => ({ value: String(i + 1), label: m }))]} /></div>
+        </div>
+        <div><label className="text-xs font-semibold text-gray-500 mb-1 block">Representante</label>
+          <Select value={representante} onChange={setRepresentante} placeholder="Todos" options={[{ value: '', label: 'Todos' }, ...repsUnicos.map(r => ({ value: r, label: r }))]} /></div>
+        <div><label className="text-xs font-semibold text-gray-500 mb-1 block">Situação da entrega</label>
+          <Select value={situacao} onChange={setSituacao} placeholder="Todas" options={[{ value: '', label: 'Todas' }, ...situacoes.map(s => ({ value: s, label: s }))]} /></div>
+      </MobileBottomSheet>
 
       {/* Drawer */}
       {selected && <PedidoDrawer pedido={selected} onClose={() => setSelected(null)} />}
-    </div>
+    </PageContainer>
   );
 }
