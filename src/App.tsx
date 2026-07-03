@@ -64,10 +64,12 @@ function AppRoutes() {
   }
 
   if (!isAuthenticated) {
+    // Login renderiza em qualquer caminho SEM redirecionar para /login —
+    // a URL permanece limpa (ex.: raiz do domínio) e o caminho de destino
+    // é preservado até depois do login.
     return (
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<LoginPage />} />
       </Routes>
     );
   }
@@ -98,7 +100,7 @@ function AppRoutes() {
         <Route path="admin/representantes" element={<AdminRoute><AdminRepresentantesPage /></AdminRoute>} />
         <Route path="admin/usuarios"       element={<AdminRoute><AdminUsuariosPage /></AdminRoute>} />
       </Route>
-      <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+      {/* Já autenticado: qualquer rota desconhecida (inclusive /login) → dashboard */}
       <Route path="*"      element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
