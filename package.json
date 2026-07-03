@@ -9,6 +9,7 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "og": "node scripts/gen-og.mjs",
+    "og:v2": "node scripts/gen-og-v2.mjs",
     "desktop:icon": "node scripts/gen-desktop-icon.mjs && tauri icon src-tauri/icon-source.png",
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build",
