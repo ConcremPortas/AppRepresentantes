@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import LoginPage from '@/pages/LoginPage';
@@ -109,11 +109,14 @@ function AppRoutes() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      {/* MemoryRouter: navegação em memória — a barra de endereço não expõe as
+          telas (fica só o domínio). Trade-off: voltar/atualizar do navegador não
+          navegam dentro do app e não há deep-link externo por URL. */}
+      <MemoryRouter>
         <AuthProvider>
           <AppRoutes />
         </AuthProvider>
-      </BrowserRouter>
+      </MemoryRouter>
     </QueryClientProvider>
   );
 }
