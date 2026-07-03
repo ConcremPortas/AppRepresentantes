@@ -206,9 +206,9 @@ export default function LoginPage() {
           >
             <span>© 2026 Concrem</span>
             <span className="text-white/15">•</span>
-            <a href="#" className="hover:text-white/60 transition-colors">Privacidade</a>
+            <a href="/privacidade.html" target="_blank" rel="noopener" className="hover:text-white/60 transition-colors">Privacidade</a>
             <span className="text-white/15">•</span>
-            <a href="#" className="hover:text-white/60 transition-colors">Termos</a>
+            <a href="/privacidade.html#termos" target="_blank" rel="noopener" className="hover:text-white/60 transition-colors">Termos</a>
             <span className="text-white/15">•</span>
             <span>v1.0</span>
           </motion.div>
