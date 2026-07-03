@@ -23,7 +23,8 @@ import {
 import { cn } from '@/utils/cn';
 
 const AVATAR_MIMES = ['image/png', 'image/jpeg', 'image/webp'];
-const AVATAR_MAX = 2 * 1024 * 1024; // 2 MB
+const AVATAR_MAX_MB = 50; // deve casar com o limite do bucket "avatars" no Supabase
+const AVATAR_MAX = AVATAR_MAX_MB * 1024 * 1024;
 
 // Extrai o caminho no bucket ('id/avatar.ext') a partir da URL pública salva.
 function pathFromAvatarUrl(url: string): string | null {
@@ -134,7 +135,7 @@ export default function PerfilPage() {
       return;
     }
     if (file.size > AVATAR_MAX) {
-      setAvatarErro('Imagem muito grande (máx 2MB)');
+      setAvatarErro(`Imagem muito grande (máx ${AVATAR_MAX_MB}MB)`);
       return;
     }
 
