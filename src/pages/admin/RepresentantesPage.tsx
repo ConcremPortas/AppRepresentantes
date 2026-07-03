@@ -187,10 +187,10 @@ export default function AdminRepresentantesPage() {
         </div>
         <button
           onClick={() => setModal({ ...EMPTY_FORM })}
-          className="flex items-center gap-1.5 h-9 px-4 bg-[hsl(142,93%,8%)] text-white text-sm rounded-lg hover:bg-[hsl(142,93%,15%)] transition-colors"
+          className="flex items-center gap-1.5 h-9 px-3 sm:px-4 bg-[hsl(142,93%,8%)] text-white text-sm rounded-lg hover:bg-[hsl(142,93%,15%)] transition-colors"
         >
-          <Plus className="w-4 h-4" />
-          Adicionar
+          <Plus className="w-4 h-4 flex-shrink-0" />
+          <span className="hidden sm:inline">Adicionar</span>
         </button>
       </div>
 

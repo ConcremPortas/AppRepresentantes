@@ -353,7 +353,7 @@ VITE_USE_MOCK=false
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "Referrer-Policy",        "value": "strict-origin-when-cross-origin" },
         { "key": "Permissions-Policy",     "value": "camera=(), microphone=(), geolocation=()" },
-        { "key": "Content-Security-Policy","value": "default-src 'self'; connect-src 'self' *.supabase.co wss://*.supabase.co challenges.cloudflare.com; script-src 'self' 'unsafe-inline' challenges.cloudflare.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com; font-src fonts.gstatic.com; frame-src challenges.cloudflare.com; img-src 'self' data: blob:; worker-src blob:;" }
+        { "key": "Content-Security-Policy","value": "default-src 'self'; connect-src 'self' *.supabase.co wss://*.supabase.co challenges.cloudflare.com; script-src 'self' 'unsafe-inline' challenges.cloudflare.com; style-src 'self' 'unsafe-inline' fonts.googleapis.com; font-src fonts.gstatic.com; frame-src challenges.cloudflare.com; img-src 'self' data: blob: *.supabase.co; worker-src blob:;" }
       ]
     }
   ]
@@ -369,6 +369,7 @@ VITE_USE_MOCK=false
 | `connect-src` | `*.supabase.co`, `wss://*.supabase.co`, `challenges.cloudflare.com` |
 | `frame-src` | `challenges.cloudflare.com` |
 | `font-src` | `fonts.gstatic.com` |
+| `img-src` | `'self'`, `data:`, `blob:`, `*.supabase.co` (fotos de avatar no Storage) |
 | `worker-src` | `blob:` |
 
 Ao adicionar novos scripts ou iframes externos, atualizar `vercel.json` antes do deploy.

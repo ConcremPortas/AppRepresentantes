@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import type { User as SupabaseAuthUser } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/client';
 import type { User, Representante, Usuario, RepresentanteERP } from '@/types';
 
@@ -13,14 +14,13 @@ interface AuthState {
 interface AuthContextValue extends AuthState {
   isAuthenticated: boolean;
   login: (credentials: { email: string; password: string }) => Promise<{ error: string | null }>;
-  logout: () => void;
-  updateRepresentante: (updates: Partial<Representante>) => void;
-  renewSession: () => void;
+  logout: () => Promise<void>;
+  /** Recarrega o perfil do usuário atual (ex.: após editar nome/telefone). */
+  refreshUser: () => Promise<void>;
 }
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
-const SESSION_KEY = 'concrem_session';
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 
 const MOCK_USER: User = {
@@ -59,70 +59,61 @@ const MOCK_USER: User = {
   ],
 };
 
-// ─── Helpers de sessão ────────────────────────────────────────────────────────
+// ─── Monta o User do app a partir do usuário autenticado (Supabase Auth) ───────
+// Carrega o perfil (concremapprep_usuarios) e os rep codes vinculados. A RLS
+// garante que cada um só leia o que pode — aqui buscamos o próprio perfil.
+async function buildUser(authUser: SupabaseAuthUser): Promise<User> {
+  const { data: perfil } = await supabase
+    .from('concremapprep_usuarios')
+    .select('*')
+    .eq('id', authUser.id)
+    .single();
 
-interface StoredSession {
-  id: string;
-  nome: string;
-  email: string;
-  admin: boolean;
-  operador: boolean;
-  repCodes: RepresentanteERP[];
-  expires_at: number;
-}
+  const { data: vinculos } = await supabase
+    .from('concremapprep_usuario_representantes')
+    .select('representante_id')
+    .eq('usuario_id', authUser.id);
 
-const SESSION_DURATION = 8 * 60 * 60 * 1000; // 8 horas em ms
-
-function saveSession(s: StoredSession) {
-  localStorage.setItem(SESSION_KEY, JSON.stringify({
-    ...s,
-    expires_at: Date.now() + SESSION_DURATION,
-  }));
-}
-
-function loadSession(): StoredSession | null {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (!raw) return null;
-    const stored = JSON.parse(raw) as StoredSession;
-    if (stored.expires_at && Date.now() > stored.expires_at) {
-      clearSession();
-      return null;
-    }
-    return stored;
-  } catch {
-    return null;
+  const repIds = (vinculos ?? []).map(v => v.representante_id);
+  let repCodes: RepresentanteERP[] = [];
+  if (repIds.length > 0) {
+    const { data: reps } = await supabase
+      .from('concremapprep_representantes')
+      .select('*')
+      .in('id', repIds);
+    repCodes = (reps ?? []) as RepresentanteERP[];
   }
-}
 
-function clearSession() {
-  localStorage.removeItem(SESSION_KEY);
-}
-
-function sessionToUser(s: StoredSession): User {
-  const usuario: Usuario = {
-    id: s.id,
-    nome: s.nome,
-    email: s.email,
-    admin: s.admin,
-    operador: s.operador ?? false,
+  const usuario: Usuario = (perfil as Usuario) ?? {
+    id: authUser.id,
+    nome: authUser.email ?? '',
+    email: authUser.email ?? '',
+    admin: false,
+    operador: false,
     ativo: true,
     created_at: '',
   };
 
+  // Representante "legado" (compatibilidade com telas que ainda leem user.representante)
   const representante: Representante = {
-    id: s.id,
-    nome: s.nome,
-    email: s.email,
-    telefone: '',
+    id: authUser.id,
+    nome: usuario.nome,
+    email: usuario.email,
+    telefone: usuario.telefone ?? '',
     regiao: '',
-    comissao_percentual: s.repCodes[0]?.comissao_percentual ?? 0,
+    comissao_percentual: repCodes[0]?.comissao_percentual ?? 0,
     meta_mensal: 0,
-    ativo: true,
-    created_at: '',
+    ativo: usuario.ativo,
+    created_at: usuario.created_at,
   };
 
-  return { id: s.id, email: s.email, usuario, representante, repCodes: s.repCodes };
+  return {
+    id: authUser.id,
+    email: authUser.email ?? usuario.email,
+    usuario,
+    representante,
+    repCodes,
+  };
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -130,18 +121,42 @@ function sessionToUser(s: StoredSession): User {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [authState, setAuthState] = useState<AuthState>(() => {
-    if (USE_MOCK) return { user: MOCK_USER, loading: false, error: null };
-    const stored = loadSession();
-    return { user: stored ? sessionToUser(stored) : null, loading: false, error: null };
-  });
+  const [authState, setAuthState] = useState<AuthState>(() =>
+    USE_MOCK
+      ? { user: MOCK_USER, loading: false, error: null }
+      : { user: null, loading: true, error: null }
+  );
 
+  // Reage à sessão do Supabase Auth: login, logout e refresh de token.
   useEffect(() => {
     if (USE_MOCK) return;
-    const stored = loadSession();
-    if (stored) {
-      setAuthState({ user: sessionToUser(stored), loading: false, error: null });
-    }
+
+    let active = true;
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      // IMPORTANTE: não chamar supabase.from(...) / outros métodos do supabase
+      // DENTRO do callback — o gotrue-js segura o lock de auth aqui e a query
+      // tentaria readquirir o mesmo lock, causando deadlock (app trava no load).
+      // Por isso adiamos com setTimeout(0): roda após o callback liberar o lock.
+      setTimeout(async () => {
+        if (!active) return;
+        if (!session?.user) {
+          setAuthState({ user: null, loading: false, error: null });
+          return;
+        }
+        try {
+          const user = await buildUser(session.user);
+          if (active) setAuthState({ user, loading: false, error: null });
+        } catch {
+          if (active) setAuthState({ user: null, loading: false, error: 'Falha ao carregar perfil' });
+        }
+      }, 0);
+    });
+
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   const login = useCallback(async ({ email, password }: { email: string; password: string }) => {
@@ -152,102 +167,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setAuthState(prev => ({ ...prev, loading: true, error: null }));
 
-    const { data, error } = await supabase.rpc('login', {
-      p_email: email,
-      p_senha: password,
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.toLowerCase().trim(),
+      password,
     });
 
     if (error) {
-      setAuthState(prev => ({ ...prev, loading: false, error: error.message }));
-      return { error: error.message };
+      const msg = /invalid login credentials/i.test(error.message)
+        ? 'E-mail ou senha incorretos'
+        : error.message;
+      setAuthState(prev => ({ ...prev, loading: false, error: msg }));
+      return { error: msg };
     }
 
-    if (data?.error) {
-      setAuthState(prev => ({ ...prev, loading: false, error: data.error }));
-      return { error: data.error as string };
-    }
-
-    const session: StoredSession = {
-      id:         data.id,
-      nome:       data.nome,
-      email:      data.email,
-      admin:      data.admin,
-      operador:   data.operador ?? false,
-      repCodes:   data.rep_codes ?? [],
-      expires_at: Date.now() + SESSION_DURATION,
-    };
-
-    saveSession(session);
-    setAuthState({ user: sessionToUser(session), loading: false, error: null });
+    // O perfil é carregado pelo onAuthStateChange (evento SIGNED_IN).
     return { error: null };
   }, []);
 
-  const logout = useCallback(() => {
-    clearSession();
+  const logout = useCallback(async () => {
+    await supabase.auth.signOut();
     setAuthState({ user: null, loading: false, error: null });
   }, []);
 
-  const renewSession = useCallback(() => {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (!raw) return;
+  const refreshUser = useCallback(async () => {
+    if (USE_MOCK) return;
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return;
     try {
-      const stored = JSON.parse(raw) as StoredSession;
-      localStorage.setItem(SESSION_KEY, JSON.stringify({
-        ...stored,
-        expires_at: Date.now() + SESSION_DURATION,
-      }));
+      const user = await buildUser(data.user);
+      setAuthState(prev => ({ ...prev, user }));
     } catch {
-      // sessão corrompida — ignora
+      /* mantém o usuário atual se o refresh falhar */
     }
-  }, []);
-
-  // Verifica expiração a cada 60 segundos
-  useEffect(() => {
-    if (USE_MOCK) return;
-    const interval = setInterval(() => {
-      const stored = loadSession();
-      if (!stored) {
-        logout();
-      }
-    }, 60 * 1000);
-    return () => clearInterval(interval);
-  }, [logout]);
-
-  // Renova sessão por atividade do usuário (throttle de 5 minutos)
-  const lastRenewRef = useRef<number>(0);
-  useEffect(() => {
-    if (USE_MOCK) return;
-    const THROTTLE = 5 * 60 * 1000;
-    const handleActivity = () => {
-      const now = Date.now();
-      if (now - lastRenewRef.current > THROTTLE) {
-        lastRenewRef.current = now;
-        renewSession();
-      }
-    };
-    window.addEventListener('mousemove', handleActivity);
-    window.addEventListener('keydown', handleActivity);
-    window.addEventListener('click', handleActivity);
-    return () => {
-      window.removeEventListener('mousemove', handleActivity);
-      window.removeEventListener('keydown', handleActivity);
-      window.removeEventListener('click', handleActivity);
-    };
-  }, [renewSession]);
-
-  const updateRepresentante = useCallback((updates: Partial<Representante>) => {
-    setAuthState(prev => {
-      if (!prev.user) return prev;
-      return {
-        ...prev,
-        user: {
-          ...prev.user,
-          representante: prev.user.representante
-            ? { ...prev.user.representante, ...updates }
-            : undefined,
-        },
-      };
-    });
   }, []);
 
   return (
@@ -256,8 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: !!authState.user,
       login,
       logout,
-      updateRepresentante,
-      renewSession,
+      refreshUser,
     }}>
       {children}
     </AuthContext.Provider>

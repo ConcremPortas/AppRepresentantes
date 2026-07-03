@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase/client';
 import { REP_EXCLUIDOS } from '@/services/pedidosVenda';
-import type { PedidoStatus } from '@/types';
+import type { PedidoStatus, PedidoAnexo } from '@/types';
 
 // ─── Tipos ────────────────────────────────────────────────
 
@@ -19,12 +19,17 @@ export interface PedidoAcompanhamento {
   cliente_nome: string;
   cliente_fantasia: string | null;
   cliente_cnpj: string;
+  cliente_cidade: string | null;
+  cliente_uf: string | null;
   data_emissao: string;
+  previsao_embarque: string | null;
+  situacao_entrega: string | null;
   total_pedido_venda: number;
   representante: string | null;
   status: PedidoStatus;
   status_observacao: string | null;
-  status_updated_at: string | null;
+  status_updated_at: string | null;   // quando entrou no status atual (do histórico)
+  anexos: PedidoAnexo[];
   logs: PedidoStatusLog[];
 }
 
@@ -62,7 +67,7 @@ export async function fetchAcompanhamento(
   // 1. Buscar pedidos em concrem_pedidos_venda
   let pedidosQuery = supabase
     .from('concrem_pedidos_venda')
-    .select('id, numero_pedido, cliente_nome, cliente_fantasia, cliente_cnpj, data_emissao, total_pedido_venda, representante')
+    .select('id, numero_pedido, cliente_nome, cliente_fantasia, cliente_cnpj, cliente_cidade, cliente_uf, data_emissao, previsao_embarque, situacao_entrega, total_pedido_venda, representante')
     .order('data_emissao', { ascending: false });
 
   if (!admin && repCodes.length > 0) {
@@ -101,40 +106,45 @@ export async function fetchAcompanhamento(
     }
   }
 
-  // 3. Histórico por numero_pedido (status já é app-level no historico)
+  // 3. Histórico por numero_pedido.
+  // A tabela do ERP concrem_pedidos_status_historico usa colunas: status_anterior,
+  // status_novo (o status "novo" da transição), alterado_em, alterado_por.
+  // status_novo está no vocabulário BRUTO do ERP → precisa de mapStatus() p/ virar app-level.
   let logsMap: Record<string, PedidoStatusLog[]> = {};
   const statusFromHistorico = new Map<string, PedidoStatus>();
 
   if (numeros.length > 0) {
     try {
       const allLogRows: {
-        id: string; numero_pedido: string; status: string;
-        created_at: string; responsavel: string | null; observacao: string | null;
+        id: string; numero_pedido: string;
+        status_anterior: string | null; status_novo: string;
+        alterado_em: string; alterado_por: string | null; observacao: string | null;
       }[] = [];
 
       for (const batch of chunk(numeros, 200)) {
         const { data: logBatch, error: logErr } = await supabase
           .from('concrem_pedidos_status_historico')
-          .select('id, numero_pedido, status, created_at, responsavel, observacao')
+          .select('id, numero_pedido, status_anterior, status_novo, alterado_em, alterado_por, observacao')
           .in('numero_pedido', batch)
-          .order('created_at', { ascending: false });
+          .order('alterado_em', { ascending: false });
         if (!logErr && logBatch) allLogRows.push(...(logBatch as typeof allLogRows));
       }
 
       for (const row of allLogRows) {
+        const statusApp = mapStatus(row.status_novo);
         // Primeira ocorrência = mais recente (ordenado desc) = status atual
         if (!statusFromHistorico.has(row.numero_pedido)) {
-          statusFromHistorico.set(row.numero_pedido, row.status as PedidoStatus);
+          statusFromHistorico.set(row.numero_pedido, statusApp);
         }
         if (!logsMap[row.numero_pedido]) logsMap[row.numero_pedido] = [];
         logsMap[row.numero_pedido].push({
           id:            row.id,
           numero_pedido: row.numero_pedido,
-          status:        row.status as PedidoStatus,
-          status_db:     row.status,
+          status:        statusApp,
+          status_db:     row.status_novo,
           observacao:    row.observacao,
-          responsavel:   row.responsavel,
-          created_at:    row.created_at,
+          responsavel:   row.alterado_por,
+          created_at:    row.alterado_em,
         });
       }
     } catch {
@@ -142,19 +152,42 @@ export async function fetchAcompanhamento(
     }
   }
 
-  // 4. Merge — historico tem prioridade; fallback para pedidos_status (ERP)
-  return pedidos.map(p => ({
-    numero_pedido:      p.numero_pedido,
-    cliente_nome:       p.cliente_nome       ?? p.numero_pedido,
-    cliente_fantasia:   p.cliente_fantasia   ?? null,
-    cliente_cnpj:       p.cliente_cnpj       ?? '',
-    data_emissao:       p.data_emissao       ?? '',
-    total_pedido_venda: p.total_pedido_venda ?? 0,
-    representante:      p.representante      ?? null,
-    status:             statusFromHistorico.get(p.numero_pedido)
-                          ?? mapStatus(statusByNumero.get(p.numero_pedido) ?? null),
-    status_observacao:  null,
-    status_updated_at:  null,
-    logs:               logsMap[p.numero_pedido] ?? [],
-  }));
+  // 4. Anexos (NF/boleto) — relatorio_entrega_anexos, em lotes
+  const anexosMap = new Map<string, PedidoAnexo[]>();
+  for (const batch of chunk(numeros, 200)) {
+    const { data: anexosData } = await supabase
+      .from('relatorio_entrega_anexos')
+      .select('pedido_id, tipo, arquivo_nome, arquivo_url')
+      .in('pedido_id', batch)
+      .order('criado_em', { ascending: false });
+    for (const a of (anexosData ?? []) as { pedido_id: string; tipo: string; arquivo_nome: string; arquivo_url: string }[]) {
+      const arr = anexosMap.get(a.pedido_id) ?? [];
+      arr.push({ tipo: a.tipo, arquivo_nome: a.arquivo_nome, arquivo_url: a.arquivo_url });
+      anexosMap.set(a.pedido_id, arr);
+    }
+  }
+
+  // 5. Merge — historico tem prioridade; fallback para pedidos_status (ERP)
+  return pedidos.map(p => {
+    const logs = logsMap[p.numero_pedido] ?? [];
+    return {
+      numero_pedido:      p.numero_pedido,
+      cliente_nome:       p.cliente_nome       ?? p.numero_pedido,
+      cliente_fantasia:   p.cliente_fantasia   ?? null,
+      cliente_cnpj:       p.cliente_cnpj       ?? '',
+      cliente_cidade:     (p as { cliente_cidade?: string | null }).cliente_cidade ?? null,
+      cliente_uf:         (p as { cliente_uf?: string | null }).cliente_uf ?? null,
+      data_emissao:       p.data_emissao       ?? '',
+      previsao_embarque:  (p as { previsao_embarque?: string | null }).previsao_embarque ?? null,
+      situacao_entrega:   (p as { situacao_entrega?: string | null }).situacao_entrega ?? null,
+      total_pedido_venda: p.total_pedido_venda ?? 0,
+      representante:      p.representante      ?? null,
+      status:             statusFromHistorico.get(p.numero_pedido)
+                            ?? mapStatus(statusByNumero.get(p.numero_pedido) ?? null),
+      status_observacao:  null,
+      status_updated_at:  logs[0]?.created_at ?? null,   // logs[0] = transição mais recente
+      anexos:             anexosMap.get(p.numero_pedido) ?? [],
+      logs,
+    };
+  });
 }

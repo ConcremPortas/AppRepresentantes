@@ -5,6 +5,8 @@ export interface Usuario {
   id: string;         // = auth.users.id
   nome: string;
   email: string;
+  telefone?: string | null;    // requer ALTER TABLE (ver PerfilPage.tsx)
+  avatar_url?: string | null;  // URL pública da foto no bucket 'avatars'
   admin: boolean;
   operador: boolean;
   ativo: boolean;
@@ -133,6 +135,13 @@ export interface OrcamentoItem {
   is_adicional: boolean;
 }
 
+/** Autor do orçamento (usuário que o criou) — vem de concremapprep_usuarios. */
+export interface OrcamentoAutor {
+  id: string;
+  nome: string;
+  avatar_url: string | null;
+}
+
 export interface Orcamento {
   id: string;
   numero: string;
@@ -150,6 +159,7 @@ export interface Orcamento {
   status: OrcamentoStatusReal;
   observacoes: string | null;
   itens?: OrcamentoItem[];
+  autor?: OrcamentoAutor | null;
   created_at: string;
   updated_at: string;
 }

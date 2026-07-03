@@ -37,6 +37,18 @@ export async function fetchUsuarios(): Promise<UsuarioComReps[]> {
   }));
 }
 
+// Extrai a mensagem de erro do corpo JSON de uma Edge Function (não-2xx).
+async function edgeErrorMessage(error: unknown, fallback: string): Promise<string> {
+  const ctx = (error as { context?: Response })?.context;
+  try {
+    const body = await ctx?.json?.();
+    if (body?.error) return body.error as string;
+  } catch { /* corpo não-JSON */ }
+  return (error as Error)?.message ?? fallback;
+}
+
+// Criação de usuário agora cria também o registro em auth.users — feito por uma
+// Edge Function com service_role (criar usuário no Auth não é possível no front).
 export async function createUsuario(
   nome: string,
   email: string,
@@ -44,29 +56,24 @@ export async function createUsuario(
   admin: boolean,
   operador: boolean = false
 ): Promise<{ id?: string; error?: string }> {
-  const { data, error } = await supabase.rpc('criar_usuario', {
-    p_nome: nome,
-    p_email: email,
-    p_senha: senha,
-    p_admin: admin,
+  const { data, error } = await supabase.functions.invoke('admin-criar-usuario', {
+    body: { nome, email, senha, admin, operador },
   });
-  if (error) throw error;
-  const result = data as { id?: string; error?: string };
-  if (result.id && operador) {
-    await supabase
-      .from('concremapprep_usuarios')
-      .update({ operador: true })
-      .eq('id', result.id);
+  if (error) {
+    return { error: await edgeErrorMessage(error, 'Falha ao criar usuário') };
   }
-  return result;
+  return data as { id?: string; error?: string };
 }
 
+// Reset de senha pelo admin (esta tela é admin-only). A Edge Function reseta a
+// senha de qualquer usuário pelo id — inclusive a do próprio admin —, então não
+// é preciso distinguir "própria senha" aqui. Evitamos chamar supabase.auth.getUser()
+// (chamada de rede que segura o lock de auth do gotrue-js e travava o fluxo).
 export async function updateSenha(id: string, novaSenha: string): Promise<void> {
-  const { error } = await supabase.rpc('alterar_senha', {
-    p_id: id,
-    p_senha: novaSenha,
+  const { error } = await supabase.functions.invoke('admin-reset-senha', {
+    body: { id, senha: novaSenha },
   });
-  if (error) throw error;
+  if (error) throw new Error(await edgeErrorMessage(error, 'Falha ao redefinir senha'));
 }
 
 export async function updateUsuario(

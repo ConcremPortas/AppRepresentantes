@@ -67,6 +67,13 @@ body {
     min-height: unset;
     min-width: unset;
   }
+  /* Switches (toggles) têm tamanho próprio (44×24) — não herdam o alvo de 44×44.
+     Regra dedicada porque utilitários do Tailwind ficam em @layer e perdem
+     para esta regra sem layer no cascade. */
+  [role="switch"] {
+    min-height: 0;
+    min-width: 0;
+  }
 }
 
 /* ── Prevent text size adjust on iOS ── */
@@ -84,4 +91,119 @@ html {
 .scrollbar-thin::-webkit-scrollbar-thumb {
   background: hsl(0, 0%, 90%);
   border-radius: 2px;
+}
+
+/* ── Tela de login: animações ── */
+@keyframes loginFadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes loginGradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+@keyframes loginFloat1 {
+  0%, 100% { transform: translate(0, 0); }
+  50%      { transform: translate(20px, -30px); }
+}
+@keyframes loginFloat2 {
+  0%, 100% { transform: translate(0, 0); }
+  50%      { transform: translate(-25px, 20px); }
+}
+
+/* Animações decorativas + entrada só quando o usuário não pediu redução de movimento.
+   Sem elas, o gradiente estático (via inline style) e o conteúdo aparecem normalmente. */
+@media (prefers-reduced-motion: no-preference) {
+  .login-gradient {
+    background-size: 200% 200%;
+    animation: loginGradientShift 12s ease infinite;
+  }
+  .login-orb-1 { animation: loginFloat1 8s ease-in-out infinite; }
+  .login-orb-2 { animation: loginFloat2 11s ease-in-out infinite; }
+  .animate-fade-up { animation: loginFadeUp 0.5s ease both; }
+}
+
+/* Autofill discreto (Chrome/Safari) — evita o amarelo padrão e mantém o texto legível */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: hsl(0, 0%, 9%);
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset;
+  caret-color: hsl(0, 0%, 9%);
+  transition: background-color 9999s ease-out 0s;
+}
+
+/* Autofill escuro — apenas nos inputs da tela de login (tema dark) */
+.login-input:-webkit-autofill,
+.login-input:-webkit-autofill:hover,
+.login-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #ffffff;
+  -webkit-box-shadow: 0 0 0 1000px #0e1f15 inset;
+  caret-color: #ffffff;
+}
+
+/* ── Overlays Radix (Select / Popover): entrada e saída suaves ── */
+@keyframes radixPopIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes radixPopOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(-4px) scale(0.98); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .radix-pop[data-state="open"]   { animation: radixPopIn 0.14s ease-out; }
+  .radix-pop[data-state="closed"] { animation: radixPopOut 0.1s ease-in; }
+}
+
+/* ── Painel de filtros de produto (mobile): revelar suave ── */
+@keyframes filtersReveal {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .animate-filters-reveal { animation: filtersReveal 0.18s ease-out; }
+}
+
+/* ── Drawer lateral de detalhes (Carteira) ── */
+@keyframes drawerOverlayIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes drawerPanelIn   { from { transform: translateX(100%); } to { transform: translateX(0); } }
+.drawer-overlay { animation: drawerOverlayIn 0.2s ease-out; }
+.drawer-panel   { animation: drawerPanelIn 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
+@media (prefers-reduced-motion: reduce) {
+  .drawer-overlay, .drawer-panel { animation: none; }
+}
+
+/* ── DatePicker (react-day-picker) — identidade Concrem ── */
+.concrem-daypicker {
+  --rdp-accent-color: hsl(142, 93%, 8%);
+  --rdp-accent-background-color: hsl(142, 61%, 94%);
+  --rdp-today-color: hsl(142, 93%, 8%);
+  --rdp-day-width: 40px;
+  --rdp-day-height: 40px;
+  margin: 0;
+  font-size: 0.875rem;
+}
+.concrem-daypicker .rdp-day_button {
+  border-radius: 0.5rem;
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+.concrem-daypicker .rdp-day_button:hover:not([disabled]) {
+  background-color: hsl(0, 0%, 96%);
+}
+.concrem-daypicker .rdp-selected .rdp-day_button {
+  background-color: hsl(142, 93%, 8%);
+  color: #ffffff;
+  border: 2px solid hsl(142, 93%, 8%);
+}
+.concrem-daypicker .rdp-selected .rdp-day_button:hover {
+  background-color: hsl(142, 93%, 15%);
+}
+.concrem-daypicker .rdp-chevron {
+  fill: hsl(142, 93%, 8%);
+}
+.concrem-daypicker .rdp-caption_label {
+  font-weight: 600;
+  color: hsl(0, 0%, 9%);
+  text-transform: capitalize;
 }

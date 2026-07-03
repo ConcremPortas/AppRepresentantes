@@ -4,10 +4,32 @@ export const formatCurrency = (value: number) =>
     currency: 'BRL',
   }).format(value);
 
-export const formatCurrencyK = (value: number) =>
-  value >= 1000
-    ? `R$ ${(value / 1000).toFixed(1).replace('.', ',')}k`
-    : formatCurrency(value);
+/**
+ * Formata um valor monetário, mas exibe um travessão "—" quando o valor é
+ * 0, null ou undefined. Usar SÓ onde o zero é ruído (valor unitário de pedido
+ * nas listas de Pedidos/Acompanhamento) — nunca onde R$ 0,00 é informação legítima.
+ */
+export function formatValorOuTraco(valor: number | null | undefined): string {
+  if (!valor || valor === 0) return '—';
+  return formatCurrency(valor);
+}
+
+/**
+ * Quebra uma string de contatos (emails/telefones) em uma lista limpa.
+ * Os campos do ERP vêm com vários endereços separados por ";" ou ",".
+ * Ex: "a@x.com;b@y.com, c@z.com" → ["a@x.com", "b@y.com", "c@z.com"].
+ */
+export function parseContatos(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  return raw.split(/[;,]/).map(s => s.trim()).filter(Boolean);
+}
+
+export const formatCurrencyK = (value: number) => {
+  const abs = Math.abs(value);
+  if (abs >= 1_000_000) return `R$ ${(value / 1_000_000).toFixed(1).replace('.', ',')}M`;
+  if (abs >= 1000)      return `R$ ${(value / 1000).toFixed(1).replace('.', ',')}k`;
+  return formatCurrency(value);
+};
 
 /**
  * Formata data para pt-BR no fuso de Brasília (America/Sao_Paulo).

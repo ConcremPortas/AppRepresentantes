@@ -1,14 +1,29 @@
 import { cn } from '@/utils/cn';
-import { type ReactNode } from 'react';
+import { type ReactNode, type CSSProperties } from 'react';
 
 interface CardProps {
   className?: string;
   children: ReactNode;
 }
 
-export function Card({ className, children }: CardProps) {
+interface CardRootProps extends CardProps {
+  hover?: boolean;
+  onClick?: () => void;
+  style?: CSSProperties;
+}
+
+export function Card({ className, children, hover, onClick, style }: CardRootProps) {
   return (
-    <div className={cn('bg-white rounded-xl border border-gray-200 shadow-sm', className)}>
+    <div
+      onClick={onClick}
+      style={style}
+      className={cn(
+        'bg-white rounded-xl border border-gray-200 shadow-sm',
+        hover && 'hover:shadow-md transition-shadow',
+        onClick && 'cursor-pointer',
+        className
+      )}
+    >
       {children}
     </div>
   );

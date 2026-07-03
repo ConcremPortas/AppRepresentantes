@@ -1,26 +1,93 @@
 import { supabase } from '@/lib/supabase/client';
-import type { Orcamento, OrcamentoItem } from '@/types';
+import type { Orcamento, OrcamentoItem, OrcamentoAutor } from '@/types';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SQL opcional (rodar manualmente no Supabase — SQL Editor):
+// Para o embedding `autor:usuario_id(...)` funcionar num único SELECT, é preciso
+// existir a FOREIGN KEY abaixo. Enquanto ela não existir, o código detecta e usa
+// um fallback (segunda query) automaticamente — criar a FK só simplifica/otimiza.
+//
+//   ALTER TABLE concremapprep_orcamentos
+//     ADD CONSTRAINT concremapprep_orcamentos_usuario_id_fkey
+//     FOREIGN KEY (usuario_id) REFERENCES concremapprep_usuarios(id);
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Embedding do autor (requer a FK acima) + itens (FK criada junto com a tabela).
+// PostgREST cria `autor` (objeto) e `itens` (array) em cada linha.
+const SELECT_COM_AUTOR = '*, autor:usuario_id ( id, nome, avatar_url ), itens:concremapprep_orcamento_itens ( * )';
+
+// Erro do PostgREST quando a relação (FK) não existe → dispara o fallback.
+function isRelationshipError(err: { code?: string; message?: string } | null): boolean {
+  if (!err) return false;
+  return err.code === 'PGRST200' || /relationship|foreign key|could not find/i.test(err.message ?? '');
+}
+
+// Fallback: busca os autores dos usuario_id presentes e junta no cliente (Map por id).
+async function enrichAutores(orcs: Orcamento[]): Promise<Orcamento[]> {
+  const ids = [...new Set(orcs.map(o => o.usuario_id).filter(Boolean))] as string[];
+  if (ids.length === 0) return orcs;
+
+  const { data } = await supabase
+    .from('concremapprep_usuarios')
+    .select('id, nome, avatar_url')
+    .in('id', ids);
+
+  const byId = new Map((data ?? []).map(u => [u.id, u as OrcamentoAutor]));
+  return orcs.map(o => ({ ...o, autor: o.usuario_id ? (byId.get(o.usuario_id) ?? null) : null }));
+}
+
+// Fallback: busca os itens de todos os orçamentos da lista e agrupa por orcamento_id.
+async function enrichItens(orcs: Orcamento[]): Promise<Orcamento[]> {
+  const ids = orcs.map(o => o.id).filter(Boolean);
+  if (ids.length === 0) return orcs;
+
+  const { data } = await supabase
+    .from('concremapprep_orcamento_itens')
+    .select('*')
+    .in('orcamento_id', ids);
+
+  const byOrc = new Map<string, OrcamentoItem[]>();
+  for (const item of (data ?? []) as OrcamentoItem[]) {
+    const arr = byOrc.get(item.orcamento_id) ?? [];
+    arr.push(item);
+    byOrc.set(item.orcamento_id, arr);
+  }
+  return orcs.map(o => ({ ...o, itens: byOrc.get(o.id) ?? [] }));
+}
+
+// Executa a query de orçamentos com autor + itens: tenta o embedding; se alguma
+// FK não existir, cai para o fallback de queries separadas (funciona nos dois casos).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fetchOrcamentosComAutor(build: (select: string) => any): Promise<Orcamento[]> {
+  const embedded = await build(SELECT_COM_AUTOR);
+  if (!embedded.error) return (embedded.data ?? []) as Orcamento[];
+
+  // TODO: criar a FK usuario_id → usuarios.id (ver SQL no topo) para usar só o embedding.
+  if (!isRelationshipError(embedded.error)) throw embedded.error;
+
+  const plain = await build('*');
+  if (plain.error) throw plain.error;
+  return enrichItens(await enrichAutores((plain.data ?? []) as Orcamento[]));
+}
 
 // ─── Fetch lista ──────────────────────────────────────
 export async function fetchOrcamentos(usuarioId: string): Promise<Orcamento[]> {
-  const { data, error } = await supabase
-    .from('concremapprep_orcamentos')
-    .select('*')
-    .eq('usuario_id', usuarioId)
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return (data ?? []) as Orcamento[];
+  return fetchOrcamentosComAutor(select =>
+    supabase
+      .from('concremapprep_orcamentos')
+      .select(select)
+      .eq('usuario_id', usuarioId)
+      .order('created_at', { ascending: false })
+  );
 }
 
 export async function fetchOrcamentosAdmin(): Promise<Orcamento[]> {
-  const { data, error } = await supabase
-    .from('concremapprep_orcamentos')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return (data ?? []) as Orcamento[];
+  return fetchOrcamentosComAutor(select =>
+    supabase
+      .from('concremapprep_orcamentos')
+      .select(select)
+      .order('created_at', { ascending: false })
+  );
 }
 
 // ─── Fetch itens de um orçamento ─────────────────────
@@ -167,13 +234,13 @@ export async function enviarOrcamento(id: string): Promise<void> {
 
 // ─── Operador: buscar todos os orçamentos não-rascunho ───
 export async function fetchOrcamentosOperador(): Promise<Orcamento[]> {
-  const { data, error } = await supabase
-    .from('concremapprep_orcamentos')
-    .select('*')
-    .neq('status', 'rascunho')
-    .order('updated_at', { ascending: false });
-  if (error) throw error;
-  return (data ?? []) as Orcamento[];
+  return fetchOrcamentosComAutor(select =>
+    supabase
+      .from('concremapprep_orcamentos')
+      .select(select)
+      .neq('status', 'rascunho')
+      .order('updated_at', { ascending: false })
+  );
 }
 
 // ─── Operador: marcar em análise ──────────────────────
@@ -212,4 +279,37 @@ export async function excluirOrcamento(id: string): Promise<void> {
     .eq('id', id)
     .eq('status', 'rascunho');
   if (error) throw error;
+}
+
+// ─── Duplicar orçamento ───────────────────────────────
+// Cria um NOVO rascunho (número novo via RPC) copiando cabeçalho e itens do
+// orçamento de origem. O novo orçamento pertence ao usuário atual.
+export async function duplicarOrcamento(id: string, usuarioId: string): Promise<Orcamento> {
+  const origem = await fetchOrcamentoById(id);
+
+  return createOrcamento(
+    {
+      usuario_id:         usuarioId,
+      representante_erp:  origem.representante_erp ?? undefined,
+      cliente_cnpj:       origem.cliente_cnpj,
+      cliente_nome:       origem.cliente_nome,
+      cliente_fantasia:   origem.cliente_fantasia ?? undefined,
+      obra_referencia:    origem.obra_referencia ?? undefined,
+      condicao_pagamento: origem.condicao_pagamento ?? undefined,
+      validade:           origem.validade ?? undefined,
+      endereco_entrega:   origem.endereco_entrega ?? undefined,
+      frete_tipo:         origem.frete_tipo ?? undefined,
+      frete_valor:        origem.frete_valor ?? undefined,
+      observacoes:        origem.observacoes ?? undefined,
+    },
+    origem.itens.map(item => ({
+      produto_id:        item.produto_id ?? undefined,
+      produto_codigo:    item.produto_codigo,
+      produto_descricao: item.produto_descricao,
+      unidade:           item.unidade,
+      quantidade:        item.quantidade,
+      preco_unitario:    item.preco_unitario ?? undefined,
+      is_adicional:      item.is_adicional,
+    })),
+  );
 }

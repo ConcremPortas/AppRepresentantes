@@ -19,13 +19,25 @@ export interface PipelineCounts {
 
 export interface DashboardStats {
   pipeline:              PipelineCounts;
-  totalVendidoMes:       number;
-  totalVendidoMesAnt:    number;
-  totalFaturadoMes:      number;
+  totalVendidoMes:       number;   // vendido no período selecionado
+  totalVendidoMesAnt:    number;   // vendido no período anterior (p/ tendência)
+  totalFaturadoMes:      number;   // faturado no período (pedidos com NF + boleto anexados)
+  faturadosNoPeriodo:    number;   // nº de pedidos do período com NF + boleto anexados
   ticketMedio:           number;
-  totalPedidos:          number;
+  totalPedidos:          number;   // total de pedidos (todos)
+  pedidosNoPeriodo:      number;   // pedidos emitidos no período selecionado
   // Financeiro por mês (últimos 6 meses) para o gráfico
   vendasMensais: { mes: string; valor: number }[];
+}
+
+export type PeriodoFiltro = 'mes' | 'trimestre' | 'ano';
+
+export interface DashboardFiltros {
+  periodo?: PeriodoFiltro;
+  ano?: number;            // ano selecionado (padrão: atual)
+  mes?: number;            // 1-12, quando periodo = 'mes'
+  trimestre?: number;      // 1-4, quando periodo = 'trimestre'
+  representante?: string;  // filtra por um representante específico (admin)
 }
 
 const EMPTY_PIPELINE: PipelineCounts = {
@@ -38,8 +50,10 @@ const EMPTY_STATS: DashboardStats = {
   totalVendidoMes:    0,
   totalVendidoMesAnt: 0,
   totalFaturadoMes:   0,
+  faturadosNoPeriodo: 0,
   ticketMedio:        0,
   totalPedidos:       0,
+  pedidosNoPeriodo:   0,
   vendasMensais:      [],
 };
 
@@ -57,10 +71,11 @@ const MES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','
 export async function fetchDashboardStats(
   repCodes: string[],
   isAdmin: boolean,
+  filtros: DashboardFiltros = {},
 ): Promise<DashboardStats> {
+  const periodo = filtros.periodo ?? 'mes';
   const now   = new Date();
-  const year  = now.getFullYear();
-  const month = now.getMonth();   // 0-based
+  const ano   = filtros.ano ?? now.getFullYear();
 
   // ── 1. Buscar pedidos do representante (id + valor + data) ──
   let pedidosQuery = supabase
@@ -69,6 +84,10 @@ export async function fetchDashboardStats(
 
   if (!isAdmin && repCodes.length > 0) {
     pedidosQuery = pedidosQuery.in('representante', repCodes);
+  }
+  // Filtro por representante específico (usado pelo admin)
+  if (filtros.representante) {
+    pedidosQuery = pedidosQuery.eq('representante', filtros.representante);
   }
   if (REP_EXCLUIDOS.length > 0) {
     pedidosQuery = pedidosQuery.not(
@@ -84,11 +103,21 @@ export async function fetchDashboardStats(
   const totalGeral   = pedidosData.reduce((s, p) => s + (p.total_pedido_venda ?? 0), 0);
   const ticketMedio  = totalPedidos > 0 ? totalGeral / totalPedidos : 0;
 
-  // ── 2. Filtros de mês ──
-  const mesIni    = startOf(year, month);
-  const mesFim    = endOf(year, month);
-  const mesAntIni = startOf(year, month - 1);
-  const mesAntFim = endOf(year, month - 1);
+  // ── 2. Intervalo do período selecionado (e do período anterior) ──
+  let mesIni: string, mesFim: string, mesAntIni: string, mesAntFim: string;
+  if (periodo === 'trimestre') {
+    const t = filtros.trimestre ?? (Math.floor(now.getMonth() / 3) + 1); // 1-4
+    const q = (t - 1) * 3;                          // 0, 3, 6, 9
+    mesIni    = startOf(ano, q);      mesFim    = endOf(ano, q + 2);
+    mesAntIni = startOf(ano, q - 3);  mesAntFim = endOf(ano, q - 1);
+  } else if (periodo === 'ano') {
+    mesIni    = startOf(ano, 0);      mesFim    = endOf(ano, 11);
+    mesAntIni = startOf(ano - 1, 0);  mesAntFim = endOf(ano - 1, 11);
+  } else {
+    const m = (filtros.mes ?? (now.getMonth() + 1)) - 1;  // 0-based
+    mesIni    = startOf(ano, m);      mesFim    = endOf(ano, m);
+    mesAntIni = startOf(ano, m - 1);  mesAntFim = endOf(ano, m - 1);
+  }
 
   const pedidosMes = pedidosData.filter(
     p => p.data_emissao >= mesIni && p.data_emissao <= mesFim,
@@ -125,19 +154,39 @@ export async function fetchDashboardStats(
     pipeline.total += 1;
   }
 
-  // ── 4. Faturado do mês — pedidos com status faturado/entrega/finalizado emitidos este mês ──
-  const totalFaturadoMes = pedidosMes
-    .filter(p => {
-      const st = statusPorNumero.get(p.numero_pedido);
-      return st === 'faturado' || st === 'entrega' || st === 'finalizado';
-    })
-    .reduce((s, p) => s + (p.total_pedido_venda ?? 0), 0);
+  // ── 4. Faturado do período — regra de negócio: pedido é considerado FATURADO
+  // quando tem NOTA FISCAL **e** BOLETO anexados (relatorio_entrega_anexos).
+  // Busca os anexos dos pedidos emitidos no período (lotes de 200) e cruza.
+  const nfSet = new Set<string>();
+  const boletoSet = new Set<string>();
+  const numerosMes = pedidosMes.map(p => p.numero_pedido).filter(Boolean);
+  for (let i = 0; i < numerosMes.length; i += 200) {
+    const batch = numerosMes.slice(i, i + 200);
+    const { data: anexos } = await supabase
+      .from('relatorio_entrega_anexos')
+      .select('pedido_id, tipo')
+      .in('pedido_id', batch);
+    for (const a of (anexos ?? []) as { pedido_id: string; tipo: string }[]) {
+      const t = (a.tipo ?? '').toLowerCase();
+      if (t.includes('boleto')) boletoSet.add(a.pedido_id);
+      else if (t.includes('nota') || t.includes('nf') || t.includes('fiscal')) nfSet.add(a.pedido_id);
+    }
+  }
 
-  // ── 5. Vendas mensais — últimos 6 meses para o gráfico ──
+  const pedidosFaturados = pedidosMes.filter(
+    p => nfSet.has(p.numero_pedido) && boletoSet.has(p.numero_pedido),
+  );
+  const totalFaturadoMes  = pedidosFaturados.reduce((s, p) => s + (p.total_pedido_venda ?? 0), 0);
+  const faturadosNoPeriodo = pedidosFaturados.length;
+
+  // ── 5. Vendas mensais — 6 meses terminando no fim do período selecionado ──
+  const refDate  = new Date(`${mesFim}T00:00:00`);
+  const refYear  = refDate.getFullYear();
+  const refMonth = refDate.getMonth();
   const vendasMensais: { mes: string; valor: number }[] = [];
   for (let i = 5; i >= 0; i--) {
-    const m   = month - i;
-    const y   = m < 0 ? year - 1 : year;
+    const m   = refMonth - i;
+    const y   = m < 0 ? refYear - 1 : refYear;
     const mi  = ((m % 12) + 12) % 12;
     const ini = startOf(y, mi);
     const fim = endOf(y, mi);
@@ -152,8 +201,10 @@ export async function fetchDashboardStats(
     totalVendidoMes,
     totalVendidoMesAnt,
     totalFaturadoMes,
+    faturadosNoPeriodo,
     ticketMedio,
     totalPedidos,
+    pedidosNoPeriodo: pedidosMes.length,
     vendasMensais,
   };
 }

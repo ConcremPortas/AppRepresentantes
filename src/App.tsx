@@ -8,6 +8,7 @@ import PedidosPage from '@/pages/PedidosPage';
 import ClientesPage from '@/pages/ClientesPage';
 import FinanceiroPage from '@/pages/FinanceiroPage';
 import PerfilPage from '@/pages/PerfilPage';
+import AlertasPage from '@/pages/AlertasPage';
 import AprovacoesPage from '@/pages/AprovacoesPage';
 import NovoOrcamentoPage from '@/pages/NovoOrcamentoPage';
 import EditarOrcamentoPage from '@/pages/EditarOrcamentoPage';
@@ -80,6 +81,7 @@ function AppRoutes() {
         <Route path="dashboard"  element={<DashboardPage />} />
         <Route path="pedidos"    element={<PedidosPage />} />
         <Route path="perfil"     element={<PerfilPage />} />
+        <Route path="alertas"    element={<AlertasPage />} />
 
         {/* Operador + Admin */}
         <Route path="aprovacoes" element={<OperadorRoute><AprovacoesPage /></OperadorRoute>} />

@@ -11,7 +11,8 @@ export interface ClienteCarteira {
   cliente_email: string | null;
   total_pedidos: number;
   total_comprado: number;
-  ultimo_pedido: string; // data_emissao ISO
+  ultimo_pedido: string;   // data_emissao ISO (mais recente)
+  primeiro_pedido: string; // data_emissao ISO (mais antigo) — p/ ciclo médio de recompra
 }
 
 export interface FetchCarteiraParams {
@@ -74,12 +75,16 @@ export async function fetchCarteira(params: FetchCarteiraParams): Promise<Client
         total_pedidos:    1,
         total_comprado:   valor,
         ultimo_pedido:    data_emissao,
+        primeiro_pedido:  data_emissao,
       });
     } else {
       existing.total_pedidos  += 1;
       existing.total_comprado += valor;
       if (data_emissao > existing.ultimo_pedido) {
         existing.ultimo_pedido = data_emissao;
+      }
+      if (data_emissao && (!existing.primeiro_pedido || data_emissao < existing.primeiro_pedido)) {
+        existing.primeiro_pedido = data_emissao;
       }
     }
   }
@@ -90,4 +95,36 @@ export async function fetchCarteira(params: FetchCarteiraParams): Promise<Client
       const nomeB = (b.cliente_fantasia?.trim() || b.cliente_nome).toLowerCase();
       return nomeA.localeCompare(nomeB, 'pt-BR');
     });
+}
+
+// ─── Pedidos de um cliente (para o painel de inteligência) ──────────────────
+export interface ClientePedido {
+  numero_pedido: string;
+  data_emissao: string;        // ISO
+  total_pedido_venda: number;
+  dados_tabela: string;        // JSON com { itens: [...] }
+}
+
+export async function fetchClientePedidos(
+  params: FetchCarteiraParams & { cnpj: string }
+): Promise<ClientePedido[]> {
+  const { cnpj, repCodes = [], admin = false, representante } = params;
+  if (!cnpj || (!admin && repCodes.length === 0)) return [];
+
+  let query = supabase
+    .from('concrem_pedidos_venda')
+    .select('numero_pedido, data_emissao, total_pedido_venda, dados_tabela')
+    .eq('cliente_cnpj', cnpj)
+    .order('data_emissao', { ascending: true })
+    .limit(1000);
+
+  if (!admin) {
+    query = query.in('representante', repCodes);
+  } else if (representante) {
+    query = query.ilike('representante', `%${representante}%`);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []) as unknown as ClientePedido[];
 }

@@ -20,7 +20,10 @@ import {
 import { cn } from '@/utils/cn';
 import { useSidebar } from './SidebarContext';
 import { useAuth } from '@/hooks/useAuth';
+import { useAlertas } from '@/hooks/useAlertas';
 import ConcremLogo from './ConcremLogo';
+import Avatar from '@/components/ui/Avatar';
+import { Bell } from 'lucide-react';
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -49,6 +52,7 @@ function Tooltip({ label, children }: { label: string; children: React.ReactNode
 // ─── Estrutura de navegação ───────────────────────────────────────────────────
 const SINGLE_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/alertas',   label: 'Alertas',   icon: Bell },
 ];
 
 const REP_GROUPS = [
@@ -131,6 +135,7 @@ const ADMIN_GROUPS = [
 export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const { isCollapsed, toggle } = useSidebar();
   const { user, logout } = useAuth();
+  const { unreadCount } = useAlertas();
   const location = useLocation();
 
   const isAdmin    = user?.usuario?.admin    ?? false;
@@ -157,7 +162,8 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   }
 
   const nome = user?.usuario?.nome ?? user?.representante?.nome ?? 'Usuário';
-  const initials = nome.split(' ').filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+  const avatarUrl = user?.usuario?.avatar_url ?? null;
+  const avatarBg = isAdmin ? 'bg-amber-600' : isOperador ? 'bg-sky-600' : 'bg-[#1a4025]';
   const emailLabel = user?.email?.split('@')[0] ?? 'portal';
 
 
@@ -179,6 +185,9 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
           isCollapsed ? 'w-16' : 'w-64',
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
           'lg:relative lg:translate-x-0',
+          // No mobile, reserva o espaço da barra inferior (MobileNav, h-16) para
+          // que o rodapé com "Sair" não fique escondido atrás dela.
+          'pb-[calc(4rem+env(safe-area-inset-bottom,0px))] lg:pb-0',
         )}
       >
         {/* ── Logo + X ── */}
@@ -235,8 +244,18 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                     : 'text-white/60 hover:bg-white/8 hover:text-white'
                 )}
               >
-                <Icon className="w-[18px] h-[18px] flex-shrink-0" />
-                {!isCollapsed && <span className="truncate">{label}</span>}
+                <span className="relative flex-shrink-0">
+                  <Icon className="w-[18px] h-[18px]" />
+                  {to === '/alertas' && unreadCount > 0 && isCollapsed && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full" />
+                  )}
+                </span>
+                {!isCollapsed && <span className="truncate flex-1">{label}</span>}
+                {!isCollapsed && to === '/alertas' && unreadCount > 0 && (
+                  <span className="min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center tabular-nums flex-shrink-0">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
               </NavLink>
             );
 
@@ -336,22 +355,12 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                 onClick={logout}
                 className="flex items-center justify-center w-10 h-10 mx-auto rounded-lg text-white/50 hover:text-white hover:bg-white/8 transition-all"
               >
-                <div className={cn(
-                  'w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold',
-                  isAdmin ? 'bg-amber-600' : isOperador ? 'bg-sky-600' : 'bg-[#1a4025]'
-                )}>
-                  {initials}
-                </div>
+                <Avatar nome={nome} avatarUrl={avatarUrl} size="sm" bgColor={avatarBg} />
               </button>
             </Tooltip>
           ) : (
             <div className="flex items-center gap-2.5">
-              <div className={cn(
-                'w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold flex-shrink-0',
-                isAdmin ? 'bg-amber-600' : isOperador ? 'bg-sky-600' : 'bg-[#1a4025]'
-              )}>
-                {initials}
-              </div>
+              <Avatar nome={nome} avatarUrl={avatarUrl} size="sm" bgColor={avatarBg} className="w-8 h-8" />
               <div className="flex-1 min-w-0">
                 <p className="text-white text-[12px] font-semibold leading-tight truncate">
                   {nome.split(' ')[0]}

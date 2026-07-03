@@ -1,6 +1,9 @@
 import { supabase } from '@/lib/supabase/client';
 import type { Notificacao } from '@/types';
 
+// Alias usado pelo motor de alertas (src/alerts/engine.ts)
+export type NotificacaoDB = Notificacao;
+
 export async function fetchNotificacoes(usuario_id: string): Promise<Notificacao[]> {
   const { data, error } = await supabase
     .from('concremapprep_notificacoes')

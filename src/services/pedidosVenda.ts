@@ -4,8 +4,47 @@ import type { PedidoVenda, PedidoDadosTabela, PedidoItemERP, PedidoAnexo } from 
 
 export const PAGE_SIZE = 50;
 
+// Teto de linhas carregadas na Central de Pedidos (modo client-side).
+// Cobre com folga a carteira de um representante; admin sem filtro pode truncar.
+export const CENTRAL_CAP = 1500;
+
 // Representantes excluídos de todas as consultas (vendas diretas)
 export const REP_EXCLUIDOS = ['40001498 - JANDERSON LEROY MERLIN'];
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+// Enriquecimento (status pipeline + anexos NF/boleto) em lotes de 200 para
+// não estourar o limite de URL do PostgREST quando há muitos pedidos.
+async function enriquecerPedidos(pedidos: PedidoVenda[]): Promise<void> {
+  const numeros = pedidos.map(p => p.numero_pedido).filter(Boolean);
+  if (numeros.length === 0) return;
+
+  const statusMap: Record<string, string> = {};
+  const anexosMap: Record<string, PedidoAnexo[]> = {};
+
+  for (const batch of chunk(numeros, 200)) {
+    const [{ data: statusRows }, { data: anexosData }] = await Promise.all([
+      supabase.from('concrem_pedidos_status').select('numero_pedido, status_atual').in('numero_pedido', batch),
+      supabase.from('relatorio_entrega_anexos').select('pedido_id, tipo, arquivo_nome, arquivo_url').in('pedido_id', batch).order('criado_em', { ascending: false }),
+    ]);
+    for (const s of (statusRows ?? []) as { numero_pedido: string; status_atual: string }[]) {
+      statusMap[s.numero_pedido] = s.status_atual;
+    }
+    for (const a of (anexosData ?? []) as { pedido_id: string; tipo: string; arquivo_nome: string; arquivo_url: string }[]) {
+      if (!anexosMap[a.pedido_id]) anexosMap[a.pedido_id] = [];
+      anexosMap[a.pedido_id].push({ tipo: a.tipo, arquivo_nome: a.arquivo_nome, arquivo_url: a.arquivo_url });
+    }
+  }
+
+  for (const p of pedidos) {
+    p.status_pipeline = mapStatus(statusMap[p.numero_pedido] ?? null);
+    p.anexos = anexosMap[p.numero_pedido] ?? [];
+  }
+}
 
 export interface FetchPedidosParams {
   repCodes?: string[];   // vazio = admin (todos)
@@ -123,6 +162,50 @@ export async function fetchPedidosVenda(params: FetchPedidosParams): Promise<Fet
   return { data: pedidos, total: count ?? 0 };
 }
 
+export interface FetchPedidosCompletoResult {
+  data: PedidoVenda[];
+  total: number;
+  truncated: boolean;   // true quando o total excede o CENTRAL_CAP
+}
+
+// Carrega o conjunto filtrado inteiro (até CENTRAL_CAP) para a Central de
+// Pedidos operar 100% client-side: KPIs, gráficos, quick-filters e as 3 visões
+// (Cards / Tabela / Pipeline) sem refetch a cada interação.
+export async function fetchPedidosCompleto(params: FetchPedidosParams): Promise<FetchPedidosCompletoResult> {
+  const { repCodes = [], admin = false, search, cliente, representante, ano, mes, situacaoEntrega } = params;
+  if (!admin && repCodes.length === 0) return { data: [], total: 0, truncated: false };
+
+  let query = supabase
+    .from('concrem_pedidos_venda')
+    .select('*', { count: 'exact' })
+    .order('data_emissao', { ascending: false })
+    .not('representante', 'in', `(${REP_EXCLUIDOS.map(r => `"${r}"`).join(',')})`)
+    .limit(CENTRAL_CAP);
+
+  if (!admin)        query = query.in('representante', repCodes);
+  if (representante) query = query.ilike('representante', `%${representante}%`);
+  if (search)        query = query.or(`numero_pedido.ilike.%${search}%,cliente_cnpj.ilike.%${search}%`);
+  if (cliente)       query = query.or(`cliente_nome.ilike.%${cliente}%,cliente_fantasia.ilike.%${cliente}%`);
+
+  if (ano) {
+    const mStart = mes ?? 1;
+    const mEnd   = mes ?? 12;
+    const lastDay = new Date(ano, mEnd, 0).getDate();
+    query = query
+      .gte('data_emissao', `${ano}-${String(mStart).padStart(2, '0')}-01`)
+      .lte('data_emissao', `${ano}-${String(mEnd).padStart(2, '0')}-${lastDay}`);
+  }
+  if (situacaoEntrega) query = query.eq('situacao_entrega', situacaoEntrega);
+
+  const { data, error, count } = await query;
+  if (error) throw error;
+
+  const pedidos = (data ?? []) as PedidoVenda[];
+  await enriquecerPedidos(pedidos);
+
+  return { data: pedidos, total: count ?? pedidos.length, truncated: (count ?? 0) > CENTRAL_CAP };
+}
+
 export async function fetchSituacoesEntrega(): Promise<string[]> {
   const { data, error } = await supabase
     .from('concrem_pedidos_venda')
@@ -147,6 +230,24 @@ export async function fetchRepresentantesUnicos(): Promise<string[]> {
 
   const unicos = [...new Set((data ?? []).map(r => r.representante as string))];
   return unicos;
+}
+
+export interface PedidoHistoricoItem {
+  status: string;
+  observacao: string | null;
+  responsavel: string | null;
+  created_at: string;
+}
+
+// Histórico de transições de status de um pedido (concrem_pedidos_status_historico).
+export async function fetchPedidoHistorico(numeroPedido: string): Promise<PedidoHistoricoItem[]> {
+  const { data, error } = await supabase
+    .from('concrem_pedidos_status_historico')
+    .select('status, observacao, responsavel, created_at')
+    .eq('numero_pedido', numeroPedido)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as PedidoHistoricoItem[];
 }
 
 // ─── Helpers ──────────────────────────────────────────────

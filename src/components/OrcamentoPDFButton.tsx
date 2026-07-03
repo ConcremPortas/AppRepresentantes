@@ -12,6 +12,22 @@ interface Props {
   className?: string;
 }
 
+// Gera e baixa o PDF do orçamento. Reutilizável fora do botão (ex.: menu de ações ⋮).
+export async function baixarOrcamentoPDF(orcamentoId: string, numero: string) {
+  try {
+    const orc = await fetchOrcamentoById(orcamentoId);
+    const blob = await pdf(<OrcamentoPDFDocument orcamento={orc} />).toBlob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `${numero}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error('Erro ao gerar PDF:', err);
+  }
+}
+
 export default function OrcamentoPDFButton({ orcamentoId, numero, variant = 'button', className }: Props) {
   const [loading, setLoading] = useState(false);
 
@@ -19,16 +35,7 @@ export default function OrcamentoPDFButton({ orcamentoId, numero, variant = 'but
     if (loading) return;
     setLoading(true);
     try {
-      const orc = await fetchOrcamentoById(orcamentoId);
-      const blob = await pdf(<OrcamentoPDFDocument orcamento={orc} />).toBlob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href     = url;
-      a.download = `${numero}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Erro ao gerar PDF:', err);
+      await baixarOrcamentoPDF(orcamentoId, numero);
     } finally {
       setLoading(false);
     }

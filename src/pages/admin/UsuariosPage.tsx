@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, X, Check, ShieldCheck, User as UserIcon, ToggleLeft, ToggleRight, ClipboardCheck, KeyRound, Eye, EyeOff } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -125,7 +125,7 @@ function CriarModal({
 
 // ─── Modal Editar Usuário ──────────────────────────────
 function EditarModal({
-  usuario, todosReps, onClose, saving, onUpdate, onLink, onUnlink, onAlterarSenha, savingSenha, senhaError,
+  usuario, todosReps, onClose, saving, onUpdate, onLink, onUnlink, onAlterarSenha, savingSenha, senhaError, senhaSucesso,
 }: {
   usuario: UsuarioComReps;
   todosReps: RepresentanteERP[];
@@ -137,6 +137,7 @@ function EditarModal({
   onAlterarSenha: (novaSenha: string) => void;
   savingSenha: boolean;
   senhaError?: string;
+  senhaSucesso?: boolean;
 }) {
   const [nome, setNome] = useState(usuario.nome);
   const [tipo, setTipo] = useState<TipoUsuario>(getTipo(usuario));
@@ -144,6 +145,11 @@ function EditarModal({
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [mostrarSenhaTexto, setMostrarSenhaTexto] = useState(false);
+
+  // Ao confirmar com sucesso, limpa os campos de senha.
+  useEffect(() => {
+    if (senhaSucesso) { setNovaSenha(''); setConfirmarSenha(''); }
+  }, [senhaSucesso]);
 
   const linkedIds = new Set(usuario.reps.map(r => r.id));
   const ativos = todosReps.filter(r => r.ativo);
@@ -218,6 +224,12 @@ function EditarModal({
               <div className="px-4 pb-4 space-y-3 border-t border-gray-100 pt-3">
                 {senhaError && (
                   <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{senhaError}</p>
+                )}
+                {senhaSucesso && !senhaError && (
+                  <p className="flex items-center gap-1.5 text-xs text-green-700 bg-green-50 px-3 py-2 rounded-lg">
+                    <Check className="w-3.5 h-3.5" />
+                    Senha alterada com sucesso.
+                  </p>
                 )}
                 <div>
                   <label className="text-xs font-semibold text-gray-500 mb-1 block">Nova senha</label>
@@ -311,6 +323,7 @@ export default function AdminUsuariosPage() {
   const [editando, setEditando]   = useState<UsuarioComReps | null>(null);
   const [criarError, setCriarError] = useState('');
   const [senhaError, setSenhaError] = useState('');
+  const [senhaSucesso, setSenhaSucesso] = useState(false);
 
   const { data: usuarios = [], isLoading, error: usuariosError } = useQuery({
     queryKey: ['admin-usuarios'],
@@ -355,8 +368,9 @@ export default function AdminUsuariosPage() {
 
   const senhaMutation = useMutation({
     mutationFn: ({ id, novaSenha }: { id: string; novaSenha: string }) => updateSenha(id, novaSenha),
-    onSuccess: () => setSenhaError(''),
-    onError: (err: Error) => setSenhaError(err.message),
+    onMutate: () => { setSenhaError(''); setSenhaSucesso(false); },
+    onSuccess: () => { setSenhaError(''); setSenhaSucesso(true); },
+    onError: (err: Error) => { setSenhaError(err.message); setSenhaSucesso(false); },
   });
 
   const usuarioEditandoAtualizado = editando
@@ -461,7 +475,7 @@ export default function AdminUsuariosPage() {
         <EditarModal
           usuario={usuarioEditandoAtualizado}
           todosReps={todosReps}
-          onClose={() => { setEditando(null); setSenhaError(''); }}
+          onClose={() => { setEditando(null); setSenhaError(''); setSenhaSucesso(false); }}
           saving={updateMutation.isPending}
           onUpdate={(nome, admin, operador) => updateMutation.mutate({ id: usuarioEditandoAtualizado.id, nome, admin, operador })}
           onLink={repId => linkMutation.mutate({ usuarioId: usuarioEditandoAtualizado.id, repId })}
@@ -469,6 +483,7 @@ export default function AdminUsuariosPage() {
           onAlterarSenha={novaSenha => senhaMutation.mutate({ id: usuarioEditandoAtualizado.id, novaSenha })}
           savingSenha={senhaMutation.isPending}
           senhaError={senhaError}
+          senhaSucesso={senhaSucesso}
         />
       )}
     </div>

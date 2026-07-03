@@ -1,8 +1,10 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { ChevronDown, Search, Plus, Trash2, Package, X, ArrowLeft, Save, Truck } from 'lucide-react';
+import { ChevronDown, ChevronUp, Search, Plus, Trash2, Package, X, ArrowLeft, Save, Truck, Filter } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import Select from '@/components/ui/Select';
+import DatePicker from '@/components/ui/DatePicker';
 import { cn } from '@/utils/cn';
 import { useCarteira } from '@/hooks/useCarteira';
 import { useProdutos } from '@/hooks/useProdutos';
@@ -46,21 +48,13 @@ function SelectField({ label, value, onChange, options, placeholder }: {
   return (
     <div>
       <label className="text-xs font-semibold text-gray-500 mb-1 block">{label}</label>
-      <div className="relative">
-        <select
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          className={cn(
-            'w-full h-9 pl-3 pr-8 text-sm border border-gray-300 rounded-lg appearance-none',
-            'focus:outline-none focus:ring-2 focus:ring-[hsl(142,93%,8%)] focus:border-transparent',
-            !value && 'text-gray-400'
-          )}
-        >
-          <option value="">{placeholder ?? 'Selecionar...'}</option>
-          {options.map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
-        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
-      </div>
+      <Select
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder ?? 'Selecionar...'}
+        className="h-11 sm:h-9"
+        options={options.map(o => ({ value: o, label: o }))}
+      />
     </div>
   );
 }
@@ -80,7 +74,7 @@ function InputField({ label, value, onChange, placeholder, type = 'text', requir
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         required={required}
-        className="w-full h-9 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[hsl(142,93%,8%)] focus:border-transparent"
+        className="w-full h-11 sm:h-9 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[hsl(142,93%,8%)] focus:border-transparent"
       />
     </div>
   );
@@ -220,33 +214,21 @@ function getOpcoes(produtos: Produto[], filtros: FiltrosProduto, campo: keyof Pr
   return [...new Set(lista.map(p => p[campo] as string).filter(Boolean))].sort();
 }
 
-function FilterChip({ label, value, onChange, options }: {
-  label: string; value: string; onChange: (v: string) => void; options: string[];
+// ─── Chip de filtro (usa o Select customizado — Radix) ─────
+function FilterChip({ label, value, onChange, options, className }: {
+  label: string; value: string; onChange: (v: string) => void; options: string[]; className?: string;
 }) {
   if (options.length === 0 && !value) return null;
   return (
-    <div className="relative">
-      <select
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        disabled={options.length === 0}
-        className={cn(
-          'h-8 pl-2.5 pr-7 text-xs border rounded-lg appearance-none cursor-pointer',
-          'focus:outline-none focus:ring-2 focus:ring-[hsl(142,93%,8%)]',
-          value
-            ? 'border-[hsl(142,93%,8%)] bg-[hsl(142,93%,8%)] text-white font-semibold'
-            : 'border-gray-300 bg-white text-gray-600',
-          'disabled:opacity-40 disabled:cursor-not-allowed'
-        )}
-      >
-        <option value="">{label}</option>
-        {options.map(o => <option key={o} value={o}>{o}</option>)}
-      </select>
-      <ChevronDown className={cn(
-        'absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 pointer-events-none',
-        value ? 'text-white' : 'text-gray-400'
-      )} />
-    </div>
+    <Select
+      chip
+      value={value}
+      onChange={onChange}
+      placeholder={label}
+      disabled={options.length === 0}
+      className={className}
+      options={[{ value: '', label: 'Todos' }, ...options.map(o => ({ value: o, label: o }))]}
+    />
   );
 }
 
@@ -279,9 +261,14 @@ export default function EditarOrcamentoPage() {
   const [initialized, setInitialized] = useState(false);
 
   const [filtros, setFiltros]           = useState<FiltrosProduto>(FILTROS_VAZIO);
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false); // só afeta o mobile
   const [adicionais, setAdicionais]     = useState<ItemAdicionalLocal[]>(initAdicionais);
   const [freteTipo, setFreteTipo]       = useState('');
   const [freteValor, setFreteValor]     = useState('');
+
+  // Quantos filtros de produto estão ativos (ignora a busca por texto)
+  const filtrosAtivos = (Object.entries(filtros) as [keyof FiltrosProduto, string][])
+    .filter(([k, v]) => k !== 'busca' && !!v).length;
 
   function setFiltro(campo: keyof FiltrosProduto, valor: string) {
     setFiltros(prev => campo === 'tipo' ? { ...FILTROS_VAZIO, tipo: valor } : { ...prev, [campo]: valor });
@@ -462,14 +449,17 @@ export default function EditarOrcamentoPage() {
       {/* ── Dados da Proposta ── */}
       <Card>
         <CardHeader><CardTitle>Dados da Proposta</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4 sm:space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <ClienteSelector clientes={clientes} selected={clienteSel} onSelect={setClienteSel} />
             <InputField label="Obra / Referência" value={obra} onChange={setObra} placeholder="Nome da obra" />
             <SelectField label="Condição de Pagamento" value={condicao} onChange={setCondicao} options={CONDICOES_PAGAMENTO} />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <InputField label="Validade da Proposta" value={validade} onChange={setValidade} type="date" />
+            <div>
+              <label className="text-xs font-semibold text-gray-500 mb-1 block">Validade da Proposta</label>
+              <DatePicker value={validade || null} onChange={v => setValidade(v ?? '')} className="h-11 sm:h-9" />
+            </div>
             <InputField label="Endereço de Entrega" value={endereco} onChange={setEndereco} placeholder="Rua, número, bairro, cidade - UF" />
           </div>
           <div>
@@ -493,9 +483,31 @@ export default function EditarOrcamentoPage() {
             <span className="text-xs text-gray-400">{produtos.length} produtos no catálogo</span>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex gap-2 flex-wrap items-center">
-            <FilterChip label="Tipo" value={filtros.tipo} onChange={v => setFiltro('tipo', v)} options={opTipos} />
+        <CardContent className="space-y-4 sm:space-y-3">
+          {/* Botão "Filtros (N)" — só no mobile */}
+          <button
+            type="button"
+            onClick={() => setFiltrosAbertos(o => !o)}
+            className={cn(
+              'lg:hidden flex items-center justify-between w-full h-9 px-3 rounded-lg text-sm font-medium border transition-colors',
+              filtrosAtivos > 0
+                ? 'border-[hsl(142,93%,8%)] bg-[hsl(142,93%,8%)]/5 text-[hsl(142,93%,8%)]'
+                : 'border-gray-300 bg-white text-gray-600',
+            )}
+          >
+            <span className="flex items-center gap-2">
+              <Filter className="w-4 h-4" />
+              Filtros{filtrosAtivos > 0 && ` (${filtrosAtivos})`}
+            </span>
+            {filtrosAbertos ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+
+          {/* Filtros: desktop sempre visível (flex-wrap); mobile em grade de 2 colunas ao abrir. */}
+          <div className={cn(
+            'gap-2 lg:flex lg:flex-wrap lg:items-center',
+            filtrosAbertos ? 'grid grid-cols-2 animate-filters-reveal' : 'hidden',
+          )}>
+            <FilterChip label="Tipo" value={filtros.tipo} onChange={v => setFiltro('tipo', v)} options={opTipos} className="w-full lg:w-auto" />
             {chipsVisiveis.map(key => {
               const def = CHIPS_DEF.find(c => c.key === key)!;
               return (
@@ -505,15 +517,16 @@ export default function EditarOrcamentoPage() {
                   value={filtros[key] as string}
                   onChange={v => setFiltro(key, v)}
                   options={getOpcoes(produtos, filtros, def.campo)}
+                  className="w-full lg:w-auto"
                 />
               );
             })}
-            {Object.entries(filtros).some(([k, v]) => k !== 'busca' && !!v) && (
+            {filtrosAtivos > 0 && (
               <button
                 onClick={() => setFiltros(FILTROS_VAZIO)}
-                className="text-xs text-red-500 hover:text-red-700 px-1"
+                className="col-span-2 text-xs text-red-500 hover:text-red-700 px-1 text-left lg:col-auto"
               >
-                Limpar
+                Limpar filtros
               </button>
             )}
           </div>
@@ -679,7 +692,7 @@ export default function EditarOrcamentoPage() {
             <CardTitle>Frete</CardTitle>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4 sm:space-y-3">
           <SelectField label="Tipo de Frete" value={freteTipo} onChange={setFreteTipo} options={TIPOS_FRETE} placeholder="Selecionar tipo de frete..." />
           {freteTipo === 'CIF - Valor fixo negociado' && (
             <InputField label="Valor do Frete (R$)" value={freteValor} onChange={setFreteValor} placeholder="0,00" type="number" />
