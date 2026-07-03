@@ -609,9 +609,11 @@ export default function PedidosPage() {
     }
     return arr;
   }, [base, hoje]);
-  const chartReps = useMemo(() => {
+  // Top clientes — agregado a partir de `base`, que já vem filtrado pelos pedidos
+  // do usuário (cada representante vê somente os próprios clientes).
+  const chartClientes = useMemo(() => {
     const m = new Map<string, number>();
-    for (const p of base) { const r = p.representante?.trim(); if (r) m.set(r, (m.get(r) ?? 0) + 1); }
+    for (const p of base) { const c = nomeCliente(p)?.trim(); if (c && c !== '—') m.set(c, (m.get(c) ?? 0) + 1); }
     return [...m.entries()].map(([nome, n]) => ({ nome, n })).sort((a, b) => b.n - a.n).slice(0, 5);
   }, [base]);
 
@@ -738,13 +740,13 @@ export default function PedidosPage() {
               </div>
 
               <div className="rounded-2xl bg-white border border-gray-200/70 shadow-sm p-4 min-w-0 overflow-hidden">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Top representantes</p>
-                {chartReps.length <= 1 ? (
-                  <p className="text-xs text-gray-400 py-8 text-center">Dados de um único representante</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2">Top clientes</p>
+                {chartClientes.length === 0 ? (
+                  <p className="text-xs text-gray-400 py-8 text-center">Sem dados</p>
                 ) : (
                   <div className="space-y-2 mt-1">
-                    {chartReps.map((r, i) => {
-                      const max = chartReps[0].n;
+                    {chartClientes.map((r, i) => {
+                      const max = chartClientes[0].n;
                       return (
                         <div key={r.nome}>
                           <div className="flex items-center justify-between mb-0.5">
