@@ -8,12 +8,17 @@ export default defineConfig({
     tailwindcss(),
     react(),
   ],
+  // Não limpa o terminal — mantém legível o output do Tauri (desktop:dev).
+  clearScreen: false,
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
   },
   server: {
+    // Porta fixa para o Tauri (devUrl em src-tauri/tauri.conf.json aponta para 5173).
+    port: 5173,
+    strictPort: true,
     watch: {
       // OneDrive trava binários (ex.: favicons) durante a sincronização e o
       // watcher do Vite derruba o dev server com EBUSY. Ignorar assets que não
