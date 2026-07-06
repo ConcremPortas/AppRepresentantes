@@ -1,5 +1,26 @@
 import { supabase } from '@/lib/supabase/client';
+import { VALID_ID_NOTA_CONF } from '@/constants/orderFilters';
 import type { ClientGroup } from '@/types';
+
+// CNPJs (somente dígitos) dos clientes que pertencem aos grupos informados —
+// derivados de concrem_pedidos_venda.grupo_cliente. Usado para escopar dados que
+// não têm grupo_cliente próprio (ex.: orçamentos), mapeando cliente→grupo.
+export async function fetchCnpjsDosGrupos(grupos: string[]): Promise<Set<string>> {
+  if (!grupos || grupos.length === 0) return new Set();
+  const { data, error } = await supabase
+    .from('concrem_pedidos_venda')
+    .select('cliente_cnpj')
+    .in('grupo_cliente', grupos)
+    .in('id_nota_conf', VALID_ID_NOTA_CONF)
+    .limit(50000);
+  if (error) return new Set();
+  const s = new Set<string>();
+  for (const r of data ?? []) {
+    const d = String((r as { cliente_cnpj?: string }).cliente_cnpj ?? '').replace(/\D/g, '');
+    if (d) s.add(d);
+  }
+  return s;
+}
 
 // Grupos de cliente (tabela client_groups) — para o multi-select do cadastro de
 // usuários e para a gestão de grupos. Requer a migração aplicada no banco.
