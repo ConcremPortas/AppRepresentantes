@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "og": "node scripts/gen-og.mjs",
     "og:v2": "node scripts/gen-og-v2.mjs",
+    "login:bg": "node scripts/gen-login-bg.mjs",
     "desktop:icon": "node scripts/gen-desktop-icon.mjs && tauri icon src-tauri/icon-source.png",
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build",
