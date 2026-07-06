@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useId, type ReactNode } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrcamentos } from '@/hooks/useOrcamentos';
 import { useCarteira } from '@/hooks/useCarteira';
@@ -17,7 +18,7 @@ import {
   FileText, Clock, CheckCircle, AlertTriangle,
   ArrowRight, ArrowUpRight, TrendingUp, TrendingDown,
   Unlock, Map as MapIcon, Wrench, Handshake, Factory, FileCheck2, Truck, PackageCheck,
-  ChevronDown, ChevronRight, LayoutList, Layers,
+  ChevronDown, ChevronLeft, ChevronRight, LayoutList, Layers, CalendarDays, CalendarClock, X,
   Sparkles, Lightbulb, Target, Trophy, Activity,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
@@ -263,22 +264,27 @@ function RankingList({ items }: { items: { nome: string; valor: string; sub?: st
 const DIAS_SEMANA = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 const MESES_FULL = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
-function MonthCalendar({ year, month, activity, today }: {
-  year: number; month: number; activity: Map<string, number>; today: Date;
+type DiaSelecionado = { key: string; count: number; numeros: string[] };
+
+function MonthCalendar({ year, month, activity, today, onSelectDay, selectedKey }: {
+  year: number; month: number; activity: Map<string, string[]>; today: Date;
+  onSelectDay: (d: DiaSelecionado) => void; selectedKey: string | null;
 }) {
   // Grade do mês: começa no domingo da 1ª semana, termina no sábado da última
   const cells = useMemo(() => {
     const first = new Date(year, month, 1);
     const start = new Date(first);
     start.setDate(1 - first.getDay());
-    const out: { key: string; dia: number; count: number; noMes: boolean; isToday: boolean }[] = [];
+    const out: { key: string; dia: number; count: number; numeros: string[]; noMes: boolean; isToday: boolean }[] = [];
     const cursor = new Date(start);
     while (out.length < 42) {
       const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
+      const numeros = activity.get(key) ?? [];
       out.push({
         key,
         dia: cursor.getDate(),
-        count: activity.get(key) ?? 0,
+        count: numeros.length,
+        numeros,
         noMes: cursor.getMonth() === month,
         isToday: cursor.toDateString() === today.toDateString(),
       });
@@ -290,55 +296,147 @@ function MonthCalendar({ year, month, activity, today }: {
   }, [year, month, activity, today]);
 
   return (
-    <div>
-      <p className="text-xs font-semibold text-gray-700 mb-2">{MESES_FULL[month]} de {year}</p>
+    <div className="min-w-0">
+      <p className="text-xs font-semibold text-gray-700 mb-2 text-center sm:text-left">
+        <span className="capitalize">{MESES_FULL[month]}</span> <span className="text-gray-400 font-medium">{year}</span>
+      </p>
       <div className="grid grid-cols-7 gap-y-1">
         {DIAS_SEMANA.map((d, i) => (
           <span key={i} className="h-6 flex items-center justify-center text-[10px] font-semibold text-gray-400">{d}</span>
         ))}
-        {cells.map(c => (
-          <span
-            key={c.key}
-            title={c.noMes ? `${formatDate(c.key)}: ${c.count} orçamento(s)` : undefined}
-            className="h-7 flex items-center justify-center"
-          >
-            <span className={cn(
-              'w-6 h-6 rounded-full flex items-center justify-center text-[11px] tabular-nums',
-              // Dias de meses vizinhos: sempre esmaecidos, sem cor de atividade nem destaque de "hoje"
-              !c.noMes ? 'text-gray-300'
-                : c.count === 0 ? 'text-gray-600'
-                : c.count === 1 ? 'bg-emerald-200 text-emerald-900 font-semibold'
-                : c.count === 2 ? 'bg-emerald-400 text-white font-semibold'
-                : 'bg-emerald-600 text-white font-semibold',
-              // "Hoje" só é destacado no calendário do PRÓPRIO mês
-              c.noMes && c.isToday && 'ring-2 ring-[hsl(142,93%,8%)] ring-offset-1 font-semibold',
-              c.noMes && c.isToday && c.count === 0 && 'text-[hsl(142,93%,8%)]',
-            )}>
-              {c.dia}
+        {cells.map(c => {
+          const clicavel = c.noMes && c.count > 0;
+          const isSel = c.noMes && selectedKey === c.key;
+          const dotClass = cn(
+            'w-7 h-7 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[11px] tabular-nums transition-colors',
+            !c.noMes ? 'text-gray-300'
+              : c.count === 0 ? 'text-gray-600'
+              : c.count === 1 ? 'bg-emerald-200 text-emerald-900 font-semibold'
+              : c.count === 2 ? 'bg-emerald-400 text-white font-semibold'
+              : 'bg-emerald-600 text-white font-semibold',
+            clicavel && 'hover:brightness-95 cursor-pointer',
+            c.noMes && c.isToday && 'ring-2 ring-[hsl(142,93%,8%)] ring-offset-1 font-semibold',
+            c.noMes && c.isToday && c.count === 0 && 'text-[hsl(142,93%,8%)]',
+            isSel && 'outline outline-2 outline-offset-1 outline-emerald-500',
+          );
+          const titulo = c.noMes ? `${formatDate(c.key)} — ${c.count} orçamento(s)` : undefined;
+          return (
+            <span key={c.key} className="h-8 sm:h-7 flex items-center justify-center">
+              {clicavel ? (
+                <button type="button" title={titulo} className={dotClass}
+                  onClick={() => onSelectDay({ key: c.key, count: c.count, numeros: c.numeros })}>
+                  {c.dia}
+                </button>
+              ) : (
+                <span title={titulo} className={dotClass}>{c.dia}</span>
+              )}
             </span>
-          </span>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function ActivityHeatmap({ activity, today }: { activity: Map<string, number>; today: Date }) {
-  // Últimos 3 meses (do mais antigo para o atual)
+function ActivityCalendar({ activity, today }: { activity: Map<string, string[]>; today: Date }) {
+  const reduce = useReducedMotion();
+  const lg = useMediaQuery('(min-width: 1024px)');
+  const sm = useMediaQuery('(min-width: 640px)');
+  const count = lg ? 3 : sm ? 2 : 1; // desktop 3 · tablet 2 · mobile 1
+
+  const [offset, setOffset] = useState(0); // deslocamento em meses a partir do mês atual
+  const [dir, setDir] = useState(0);       // direção da última navegação (p/ animação)
+  const [selected, setSelected] = useState<DiaSelecionado | null>(null);
+
+  // Janela de meses terminando no mês âncora (mês atual + offset). Do mais antigo p/ o mais novo.
   const months = useMemo(() => {
-    return [2, 1, 0].map(back => {
-      const d = new Date(today.getFullYear(), today.getMonth() - back, 1);
+    const anchor = new Date(today.getFullYear(), today.getMonth() + offset, 1);
+    return Array.from({ length: count }, (_, i) => {
+      const d = new Date(anchor.getFullYear(), anchor.getMonth() - (count - 1 - i), 1);
       return { year: d.getFullYear(), month: d.getMonth() };
     });
-  }, [today]);
+  }, [today, offset, count]);
+
+  const rangeLabel = useMemo(() => {
+    const f = months[0], l = months[months.length - 1];
+    if (months.length === 1) return `${MESES_FULL[f.month]} de ${f.year}`;
+    const fm = MESES_FULL[f.month].slice(0, 3), lm = MESES_FULL[l.month].slice(0, 3);
+    return f.year === l.year ? `${fm}–${lm} de ${l.year}` : `${fm}/${f.year} – ${lm}/${l.year}`;
+  }, [months]);
+
+  const go = (delta: number) => { setDir(delta); setOffset(o => o + delta); setSelected(null); };
+  const irHoje = () => { setDir(0); setOffset(0); setSelected(null); };
 
   return (
     <div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4">
-        {months.map(m => (
-          <MonthCalendar key={`${m.year}-${m.month}`} year={m.year} month={m.month} activity={activity} today={today} />
-        ))}
+      {/* Cabeçalho + navegação */}
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <CalendarDays className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+          <div className="min-w-0">
+            <h3 className="text-sm font-bold text-gray-900 leading-tight">Atividade de Orçamentos</h3>
+            <p className="text-[11px] text-gray-400 capitalize">{rangeLabel}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button type="button" onClick={() => go(-1)} aria-label="Meses anteriores"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-colors">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button type="button" onClick={irHoje}
+            className="px-2.5 h-8 rounded-lg text-[11px] font-semibold text-gray-600 hover:bg-gray-100 transition-colors">
+            Hoje
+          </button>
+          <button type="button" onClick={() => go(1)} aria-label="Próximos meses"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-colors">
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
       </div>
+
+      {/* Calendários (transição animada entre janelas de meses) */}
+      <div className="overflow-hidden">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={`${offset}-${count}`}
+            initial={reduce ? { opacity: 0 } : { opacity: 0, x: dir === 0 ? 0 : dir * 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={reduce ? { opacity: 0 } : { opacity: 0, x: dir === 0 ? 0 : dir * -24 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="grid gap-x-5 gap-y-4"
+            style={{ gridTemplateColumns: `repeat(${count}, minmax(0,1fr))` }}
+          >
+            {months.map(m => (
+              <MonthCalendar key={`${m.year}-${m.month}`} year={m.year} month={m.month}
+                activity={activity} today={today} onSelectDay={setSelected} selectedKey={selected?.key ?? null} />
+            ))}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Detalhe do dia (clique no desktop / toque no mobile) */}
+      <AnimatePresence initial={false}>
+        {selected && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }} className="overflow-hidden">
+            <div className="mt-3 rounded-xl bg-emerald-50/70 border border-emerald-100 px-3 py-2 flex items-start gap-2.5">
+              <CalendarClock className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-gray-800 tabular-nums">{formatDate(selected.key)} · {selected.count} orçamento(s)</p>
+                {selected.numeros.length > 0 && (
+                  <p className="text-[11px] text-gray-500 mt-0.5 break-words">
+                    {selected.numeros.slice(0, 8).map(n => `#${n}`).join(', ')}{selected.numeros.length > 8 ? ` +${selected.numeros.length - 8}` : ''}
+                  </p>
+                )}
+              </div>
+              <button type="button" onClick={() => setSelected(null)} aria-label="Fechar" className="text-gray-400 hover:text-gray-600 flex-shrink-0">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Legenda: quantos orçamentos criados no dia */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-4 pt-3 border-t border-gray-100 text-[10px] text-gray-500">
         <span className="font-semibold text-gray-400 uppercase tracking-wider">Orçamentos por dia</span>
@@ -566,8 +664,15 @@ export default function DashboardPage() {
 
   // ── Atividade (heatmap) ──
   const activity = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const o of orcamentos) { const d = (o.created_at ?? '').slice(0, 10); if (d) m.set(d, (m.get(d) ?? 0) + 1); }
+    // date (YYYY-MM-DD) → números dos orçamentos criados naquele dia
+    const m = new Map<string, string[]>();
+    for (const o of orcamentos) {
+      const d = (o.created_at ?? '').slice(0, 10);
+      if (!d) continue;
+      const arr = m.get(d) ?? [];
+      arr.push(String(o.numero));
+      m.set(d, arr);
+    }
     return m;
   }, [orcamentos]);
 
@@ -838,13 +943,7 @@ export default function DashboardPage() {
       <Reveal delay={0.05}>
         <div className={cn('grid gap-3', isAdmin && topReps.length > 0 ? 'lg:grid-cols-2' : 'grid-cols-1')}>
           <Card className="min-w-0 overflow-hidden">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4 text-emerald-500" />
-                <CardTitle>Atividade de Orçamentos</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent><ActivityHeatmap activity={activity} today={today} /></CardContent>
+            <CardContent><ActivityCalendar activity={activity} today={today} /></CardContent>
           </Card>
           {isAdmin && topReps.length > 0 && (
             <Card className="min-w-0 overflow-hidden">
