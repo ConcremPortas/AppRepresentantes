@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useId, type ReactNode } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useAuth } from '@/hooks/useAuth';
+import { perfilDoUsuario } from '@/constants/perfis';
+import RepPerformancePanel from '@/components/dashboard/RepPerformancePanel';
 import { useOrcamentos } from '@/hooks/useOrcamentos';
 import { useCarteira } from '@/hooks/useCarteira';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
@@ -587,7 +589,9 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const today = new Date();
   const rep = user?.representante;
-  const isAdmin = user?.usuario?.admin ?? false;
+  const perfil = perfilDoUsuario(user?.usuario);
+  const isAdmin = perfil === 'admin' || perfil === 'diretor_geral';
+  const isDiretor = perfil === 'diretor' || perfil === 'diretor_geral';
 
   // ── Filtros / modo ──
   const [periodo, setPeriodo] = useState<'mes' | 'trimestre' | 'ano'>('mes');
@@ -938,6 +942,11 @@ export default function DashboardPage() {
           )}
         </div>
       </Reveal>
+
+      {/* ── Performance dos representantes (diretor / diretor geral) ── */}
+      {isDiretor && (
+        <Reveal delay={0.04}><RepPerformancePanel /></Reveal>
+      )}
 
       {/* ── Atividade (heatmap) + Top Representantes (admin) ── */}
       <Reveal delay={0.05}>
