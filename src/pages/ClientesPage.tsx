@@ -745,15 +745,19 @@ function ClienteListItem({ cliente, active, onSelect }: {
     >
       <ClienteAvatar nome={nome} semNome={semNome} size="sm" />
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', MOV_META[mov].dot)} title={`Movimentação: ${MOV_META[mov].label}`} />
-          {semNome
-            ? <p className="text-[13px] italic text-gray-400 truncate">Cliente sem nome</p>
-            : <p className={cn('text-[13px] font-medium truncate', active ? 'text-[hsl(142,93%,8%)]' : 'text-gray-800')}>{nome}</p>}
+        {semNome
+          ? <p className="text-[13px] italic text-gray-400 truncate">Cliente sem nome</p>
+          : <p className={cn('text-[13px] font-medium truncate', active ? 'text-[hsl(142,93%,8%)]' : 'text-gray-800')}>{nome}</p>}
+        <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+          <span className="text-[11px] text-gray-400 truncate">
+            {cliente.cliente_cidade ? `${cliente.cliente_cidade}/${cliente.cliente_uf}` : fmtCnpj(cliente.cliente_cnpj)}
+          </span>
+          {mov !== 'ativo' && mov !== 'sem_historico' && (
+            <span className={cn('flex-shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded-full leading-none', MOV_META[mov].chip)}>
+              {MOV_META[mov].label}
+            </span>
+          )}
         </div>
-        <p className="text-[11px] text-gray-400 truncate">
-          {cliente.cliente_cidade ? `${cliente.cliente_cidade}/${cliente.cliente_uf}` : fmtCnpj(cliente.cliente_cnpj)}
-        </p>
       </div>
       <div className="text-right flex-shrink-0">
         <p className="text-xs font-bold text-gray-800 tabular-nums">{fmtVolume(cliente.total_comprado)}</p>
