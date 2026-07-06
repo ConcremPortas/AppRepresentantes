@@ -89,27 +89,61 @@ create policy ucg_admin_write on user_client_groups for all
   using (app_perfil() in ('admin','diretor_geral'))
   with check (app_perfil() in ('admin','diretor_geral'));
 
--- 6) RLS DE concrem_pedidos_venda  ⚠️ LER ANTES DE APLICAR --------------------
--- RLS SÓ funciona em TABELA normal do Postgres. Se concrem_pedidos_venda for
--- tabela regular, habilite e crie a policy abaixo. Se for VIEW ou FOREIGN TABLE
--- (FDW), RLS NÃO se aplica — nesse caso mantenha o filtro na camada de service
--- (já implementado no app) e/ou crie uma VIEW SEGURA que embuta este filtro.
---
---   alter table concrem_pedidos_venda enable row level security;
---   drop policy if exists pv_scope on concrem_pedidos_venda;
---   create policy pv_scope on concrem_pedidos_venda for select using (
---     app_perfil() in ('admin','diretor_geral')                 -- visão global
---     or (app_perfil() = 'diretor' and app_diretor_ve_grupo(grupo_cliente))
---     or (app_perfil() in ('representante','operador')          -- escopo de rep
---         and representante in (
---           select r.representante_erp
---           from concremapprep_usuario_representantes ur
---           join concremapprep_representantes r on r.id = ur.representante_id
---           where ur.usuario_id = auth.uid()
---         ))
---   );
---
--- Observação: hoje o app concede `select ... to anon` em concrem_pedidos_venda
--- e filtra na camada de service. Para RLS valer, o app precisa consultar como o
--- usuário autenticado (Supabase Auth) — o que já ocorre após a migração de auth.
+-- 6) VIEWS SEGURAS — escopo de DIRETOR / DIRETOR GERAL ------------------------
+-- concrem_pedidos_venda (e afins) são VIEWS sobre erp.* que já filtram por
+-- app_is_admin() OR representante IN app_my_rep_codes(). Estendemos o WHERE para:
+--   diretor_geral → tudo (como admin)
+--   diretor       → só pedidos cujo grupo_cliente está nos grupos vinculados
+-- NÃO usar security_invoker: estas views precisam rodar como definer p/ ler erp.*.
+-- create or replace preserva dono/permissões. Colunas mantidas idênticas.
+
+create or replace view public.concrem_pedidos_venda as
+  select id, numero_pedido, id_nota_conf, ped_compra_cliente, data_emissao,
+    data_validade, previsao_embarque, cliente_codigo, cliente_nome, cliente_cnpj,
+    cliente_fantasia, cliente_cidade, cliente_uf, cliente_cep, cliente_endereco,
+    cliente_bairro, cliente_telefone, cliente_email, cliente_inscest, cliente_estab,
+    representante, dados_tabela, frete, desconto, total_qtd, total_qtd_m3,
+    total_produtos, total_pedido_venda, created_at, updated_at, peso_liquido_item,
+    grupo_cliente, situacao_entrega
+  from erp.concrem_pedidos_venda v
+  where app_is_admin()
+     or app_perfil() = 'diretor_geral'
+     or (app_perfil() = 'diretor' and app_diretor_ve_grupo(grupo_cliente))
+     or (representante in ( select app_my_rep_codes() ));
+
+create or replace view public.concrem_pedidos_status as
+  select id, pedido_id, numero_pedido, status_atual, atualizado_em, atualizado_por,
+    criado_em, mes_programacao, data_embarque_programacao
+  from erp.concrem_pedidos_status s
+  where app_is_admin()
+     or app_perfil() = 'diretor_geral'
+     or (numero_pedido in ( select v.numero_pedido from erp.concrem_pedidos_venda v
+          where v.representante in ( select app_my_rep_codes() ) ))
+     or (app_perfil() = 'diretor' and numero_pedido in ( select v.numero_pedido
+          from erp.concrem_pedidos_venda v where app_diretor_ve_grupo(v.grupo_cliente) ));
+
+create or replace view public.concrem_pedidos_status_historico as
+  select id, pedido_id, numero_pedido, status_anterior, status_novo, alterado_em,
+    alterado_por, observacao, notificado_representante, notificado_em,
+    notificacao_provider_id, notificacao_erro
+  from erp.concrem_pedidos_status_historico h
+  where app_is_admin()
+     or app_perfil() = 'diretor_geral'
+     or (numero_pedido in ( select v.numero_pedido from erp.concrem_pedidos_venda v
+          where v.representante in ( select app_my_rep_codes() ) ))
+     or (app_perfil() = 'diretor' and numero_pedido in ( select v.numero_pedido
+          from erp.concrem_pedidos_venda v where app_diretor_ve_grupo(v.grupo_cliente) ));
+
+create or replace view public.relatorio_entrega_anexos as
+  select id, carregamento_id, pedido_id, tipo, arquivo_nome, arquivo_url,
+    criado_em, criado_por
+  from erp.concrem_relatorio_entrega_anexos a
+  where app_is_admin()
+     or app_perfil() = 'diretor_geral'
+     or (pedido_id in ( select v.numero_pedido from erp.concrem_pedidos_venda v
+          where v.representante in ( select app_my_rep_codes() ) ))
+     or (app_perfil() = 'diretor' and pedido_id in ( select v.numero_pedido
+          from erp.concrem_pedidos_venda v where app_diretor_ve_grupo(v.grupo_cliente) ));
+
+-- concremprodutos_produtos: catálogo global (sem escopo por usuário) — inalterada.
 -- ============================================================================
