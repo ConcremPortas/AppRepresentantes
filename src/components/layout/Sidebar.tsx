@@ -14,6 +14,7 @@ import {
   X,
   ShieldCheck,
   UsersRound,
+  Layers,
   Briefcase,
   Activity,
 } from 'lucide-react';
@@ -120,6 +121,7 @@ const ADMIN_GROUPS = [
     items: [
       { to: '/admin/representantes', label: 'Representantes', icon: UsersRound },
       { to: '/admin/usuarios',       label: 'Usuários',       icon: ShieldCheck },
+      { to: '/admin/grupos',         label: 'Grupos',         icon: Layers },
     ],
   },
   {

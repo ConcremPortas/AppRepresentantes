@@ -15,6 +15,7 @@ import NovoOrcamentoPage from '@/pages/NovoOrcamentoPage';
 import EditarOrcamentoPage from '@/pages/EditarOrcamentoPage';
 import AdminRepresentantesPage from '@/pages/admin/RepresentantesPage';
 import AdminUsuariosPage from '@/pages/admin/UsuariosPage';
+import AdminGruposPage from '@/pages/admin/GruposPage';
 import AcompanhamentoPage from '@/pages/AcompanhamentoPage';
 import Layout from '@/components/layout/Layout';
 
@@ -109,6 +110,7 @@ function AppRoutes() {
         {/* Apenas admin */}
         <Route path="admin/representantes" element={<AdminRoute><AdminRepresentantesPage /></AdminRoute>} />
         <Route path="admin/usuarios"       element={<AdminRoute><AdminUsuariosPage /></AdminRoute>} />
+        <Route path="admin/grupos"         element={<AdminRoute><AdminGruposPage /></AdminRoute>} />
       </Route>
       {/* Já autenticado: qualquer rota desconhecida (inclusive /login) → dashboard */}
       <Route path="*"      element={<Navigate to="/dashboard" replace />} />

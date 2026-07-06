@@ -74,6 +74,11 @@ $$;
 alter table client_groups enable row level security;
 drop policy if exists cg_read on client_groups;
 create policy cg_read on client_groups for select using (true);
+-- escrita (criar/renomear/ativar grupo pela tela de gestão): só admin/diretor geral
+drop policy if exists cg_admin_write on client_groups;
+create policy cg_admin_write on client_groups for all
+  using (app_perfil() in ('admin','diretor_geral'))
+  with check (app_perfil() in ('admin','diretor_geral'));
 
 alter table user_client_groups enable row level security;
 drop policy if exists ucg_self on user_client_groups;

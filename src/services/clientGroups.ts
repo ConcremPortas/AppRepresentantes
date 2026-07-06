@@ -49,6 +49,53 @@ export async function fetchUserGroupNames(userId: string): Promise<string[]> {
     .filter((n): n is string => !!n);
 }
 
+// ─── Gestão de grupos (tela admin) ──────────────────────────────────────────
+export interface ClientGroupAdmin extends ClientGroup {
+  diretores: number;   // nº de diretores vinculados
+  clientes: number;    // nº de CNPJs distintos com pedidos no grupo
+}
+
+export async function fetchClientGroupsAdmin(): Promise<ClientGroupAdmin[]> {
+  const [{ data: groups, error: gErr }, { data: links }, { data: pedidos }] = await Promise.all([
+    supabase.from('client_groups').select('id, name, is_active').order('name'),
+    supabase.from('user_client_groups').select('client_group_id'),
+    supabase.from('concrem_pedidos_venda').select('grupo_cliente, cliente_cnpj').in('id_nota_conf', VALID_ID_NOTA_CONF).limit(50000),
+  ]);
+  if (gErr) throw gErr;
+
+  const dir = new Map<string, number>();
+  for (const l of (links ?? []) as { client_group_id: string }[]) {
+    dir.set(l.client_group_id, (dir.get(l.client_group_id) ?? 0) + 1);
+  }
+  const cli = new Map<string, Set<string>>();
+  for (const p of (pedidos ?? []) as { grupo_cliente: string | null; cliente_cnpj: string | null }[]) {
+    const g = (p.grupo_cliente ?? '').trim().toUpperCase() || 'SEM GRUPO';
+    const cnpj = String(p.cliente_cnpj ?? '').replace(/\D/g, '');
+    if (!cnpj) continue;
+    if (!cli.has(g)) cli.set(g, new Set());
+    cli.get(g)!.add(cnpj);
+  }
+
+  return (groups ?? []).map(g => ({
+    ...(g as ClientGroup),
+    diretores: dir.get(g.id) ?? 0,
+    clientes: cli.get(g.name.trim().toUpperCase())?.size ?? 0,
+  }));
+}
+
+export async function createClientGroup(name: string): Promise<void> {
+  const { error } = await supabase.from('client_groups').insert({ name: name.trim() });
+  if (error) throw error;
+}
+
+export async function updateClientGroup(id: string, fields: { name?: string; is_active?: boolean }): Promise<void> {
+  const { error } = await supabase
+    .from('client_groups')
+    .update({ ...fields, updated_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+}
+
 // Vincula/atualiza os grupos de um diretor (usado na gestão de usuários).
 export async function setUserGroups(userId: string, groupIds: string[]): Promise<void> {
   await supabase.from('user_client_groups').delete().eq('user_id', userId);
