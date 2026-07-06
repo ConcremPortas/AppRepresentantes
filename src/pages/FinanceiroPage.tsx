@@ -11,6 +11,7 @@ import {
   Truck, History, Share2, ExternalLink, ClipboardCheck, FolderOpen,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { MetricCard as KpiCard } from '@/components/ui/cards';
 import { useNavigate } from 'react-router-dom';
 import { useFinanceiro } from '@/hooks/useFinanceiro';
 import { useIsDesktop } from '@/hooks/useMediaQuery';
@@ -95,17 +96,7 @@ function IntegridadeBar({ pct }: { pct: number }) {
 }
 
 // ─── KPI / chip ──────────────────────────────────────────
-function KpiCard({ icon: Icon, label, value, tone }: { icon: React.ElementType; label: string; value: string; tone?: string }) {
-  return (
-    <div className="rounded-2xl bg-white border border-gray-200/70 shadow-sm p-3.5 min-w-[128px] sm:min-w-0 flex-shrink-0 sm:flex-shrink transition-shadow hover:shadow-md">
-      <div className="flex items-center gap-1.5 text-gray-400 min-w-0">
-        <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-        <p className="text-[10px] font-semibold uppercase tracking-wider truncate">{label}</p>
-      </div>
-      <p className={cn('text-lg font-bold mt-1 tabular-nums leading-tight', tone ?? 'text-gray-900')}>{value}</p>
-    </div>
-  );
-}
+// KpiCard migrado para o design system compartilhado (MetricCard) — ver import no topo.
 function QuickChip({ label, active, onClick, count }: { label: string; active: boolean; onClick: () => void; count?: number }) {
   return (
     <button type="button" onClick={onClick}
