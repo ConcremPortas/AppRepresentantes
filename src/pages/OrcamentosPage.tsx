@@ -16,6 +16,7 @@ import {
 import { baixarOrcamentoPDF } from '@/components/OrcamentoPDFButton';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/hooks/useAuth';
+import { perfilDoUsuario } from '@/constants/perfis';
 import { useOrcamentos } from '@/hooks/useOrcamentos';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { enviarOrcamento, excluirOrcamento, duplicarOrcamento } from '@/services/orcamentos';
@@ -79,7 +80,10 @@ interface QuoteActions {
 }
 
 function QuickActions({ orc, a, compact }: { orc: Orcamento; a: QuoteActions; compact?: boolean }) {
+  const { user } = useAuth();
   const [pdfLoading, setPdfLoading] = useState(false);
+  // Diretor é somente-leitura em Orçamentos (não edita/envia/duplica/exclui).
+  if (perfilDoUsuario(user?.usuario) === 'diretor') return null;
   const btn = cn(
     'rounded-lg flex items-center justify-center transition-colors',
     compact ? 'w-7 h-7' : 'w-8 h-8',
@@ -389,6 +393,7 @@ export default function OrcamentosPage() {
       : 'todos';
 
   const { user } = useAuth();
+  const isDiretor = perfilDoUsuario(user?.usuario) === 'diretor';
   const [search, setSearch] = useState('');
   // 'analise' é um pseudo-filtro que cobre enviado + em_analise (como o KPI)
   const [statusFilter, setStatusFilter] = useState<OrcamentoStatusReal | 'todos' | 'analise'>(statusInicial);
@@ -517,13 +522,15 @@ export default function OrcamentosPage() {
             )}
           </p>
         </div>
-        <Link
-          to="/orcamentos/novo"
-          className="flex items-center gap-1.5 h-10 px-3 sm:px-4 bg-[hsl(142,93%,8%)] text-white text-sm font-medium rounded-xl hover:bg-[hsl(142,93%,15%)] transition-colors shadow-sm flex-shrink-0"
-        >
-          <Plus className="w-4 h-4 flex-shrink-0" />
-          <span className="hidden sm:inline">Novo Orçamento</span>
-        </Link>
+        {!isDiretor && (
+          <Link
+            to="/orcamentos/novo"
+            className="flex items-center gap-1.5 h-10 px-3 sm:px-4 bg-[hsl(142,93%,8%)] text-white text-sm font-medium rounded-xl hover:bg-[hsl(142,93%,15%)] transition-colors shadow-sm flex-shrink-0"
+          >
+            <Plus className="w-4 h-4 flex-shrink-0" />
+            <span className="hidden sm:inline">Novo Orçamento</span>
+          </Link>
+        )}
       </div>
 
       {/* KPIs (clicáveis: filtram por status) */}

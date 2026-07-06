@@ -50,6 +50,14 @@ function RepRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// ─── Guard: criar/editar orçamento (diretor é somente-leitura) ─
+function OrcEditorRoute({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const p = perfilDoUsuario(user?.usuario);
+  if (p === 'operador' || p === 'diretor') return <Navigate to="/orcamentos" replace />;
+  return <>{children}</>;
+}
+
 function AppRoutes() {
   const { isAuthenticated, loading } = useAuth();
 
@@ -91,8 +99,8 @@ function AppRoutes() {
 
         {/* Apenas representantes */}
         <Route path="orcamentos"       element={<RepRoute><OrcamentosPage /></RepRoute>} />
-        <Route path="orcamentos/novo"       element={<RepRoute><NovoOrcamentoPage /></RepRoute>} />
-        <Route path="orcamentos/:id/editar" element={<RepRoute><EditarOrcamentoPage /></RepRoute>} />
+        <Route path="orcamentos/novo"       element={<OrcEditorRoute><NovoOrcamentoPage /></OrcEditorRoute>} />
+        <Route path="orcamentos/:id/editar" element={<OrcEditorRoute><EditarOrcamentoPage /></OrcEditorRoute>} />
         <Route path="acompanhamento" element={<RepRoute><AcompanhamentoPage /></RepRoute>} />
         <Route path="clientes"   element={<RepRoute><ClientesPage /></RepRoute>} />
         <Route path="financeiro" element={<RepRoute><FinanceiroPage /></RepRoute>} />
