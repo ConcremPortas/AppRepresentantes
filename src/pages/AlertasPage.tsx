@@ -426,7 +426,7 @@ export default function AlertasPage() {
 
   if (view === 'prefs') {
     return (
-      <PageContainer size="lg" space="none">
+      <PageContainer space="none">
         <PreferenciasView onVoltar={() => setView('lista')} />
       </PageContainer>
     );
