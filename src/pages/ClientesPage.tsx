@@ -221,6 +221,19 @@ const MOV_META: Record<ClienteAnalytics['movimentacao'], { label: string; chip: 
 };
 
 // ─── Micro-componentes ────────────────────────────────
+// Movimentação a partir do resumo da carteira (dias desde o último pedido) — mesma
+// régua do mini-dashboard (Ativo ≤20 · Atenção ≤30 · Atrasado ≤60 · Dormente >60).
+function movimentacaoCliente(c: ClienteCarteira, today: Date): ClienteAnalytics['movimentacao'] {
+  if (c.total_pedidos === 0 || !c.ultimo_pedido) return 'sem_historico';
+  const d = parseISO(c.ultimo_pedido);
+  if (!d) return 'sem_historico';
+  const dias = Math.floor((today.getTime() - d.getTime()) / DAY);
+  if (dias <= 20) return 'ativo';
+  if (dias <= 30) return 'atencao';
+  if (dias <= 60) return 'atrasado';
+  return 'dormente';
+}
+
 function ClienteAvatar({ nome, semNome, size = 'md' }: { nome: string; semNome: boolean; size?: 'sm' | 'md' | 'lg' }) {
   const dim = size === 'lg' ? 'w-14 h-14 text-base rounded-2xl' : size === 'md' ? 'w-10 h-10 text-xs rounded-xl' : 'w-8 h-8 text-[10px] rounded-lg';
   const icon = size === 'lg' ? 'w-6 h-6' : 'w-4 h-4';
@@ -720,6 +733,7 @@ function ClienteListItem({ cliente, active, onSelect }: {
   cliente: ClienteCarteira; active: boolean; onSelect: () => void;
 }) {
   const { nome, semNome } = nomeCliente(cliente);
+  const mov = movimentacaoCliente(cliente, new Date());
   return (
     <button
       type="button"
@@ -731,9 +745,12 @@ function ClienteListItem({ cliente, active, onSelect }: {
     >
       <ClienteAvatar nome={nome} semNome={semNome} size="sm" />
       <div className="flex-1 min-w-0">
-        {semNome
-          ? <p className="text-[13px] italic text-gray-400 truncate">Cliente sem nome</p>
-          : <p className={cn('text-[13px] font-medium truncate', active ? 'text-[hsl(142,93%,8%)]' : 'text-gray-800')}>{nome}</p>}
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', MOV_META[mov].dot)} title={`Movimentação: ${MOV_META[mov].label}`} />
+          {semNome
+            ? <p className="text-[13px] italic text-gray-400 truncate">Cliente sem nome</p>
+            : <p className={cn('text-[13px] font-medium truncate', active ? 'text-[hsl(142,93%,8%)]' : 'text-gray-800')}>{nome}</p>}
+        </div>
         <p className="text-[11px] text-gray-400 truncate">
           {cliente.cliente_cidade ? `${cliente.cliente_cidade}/${cliente.cliente_uf}` : fmtCnpj(cliente.cliente_cnpj)}
         </p>
