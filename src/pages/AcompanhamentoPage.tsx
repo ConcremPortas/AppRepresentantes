@@ -15,7 +15,7 @@ import {
 import { cn } from '@/utils/cn';
 import { useAcompanhamento } from '@/hooks/useAcompanhamento';
 import { useAuth } from '@/hooks/useAuth';
-import { MetricCard as KpiCard, EntityCard, Badge } from '@/components/ui/cards';
+import { MetricCard as KpiCard, EntityCard, Badge, ProgressSteps, CardActionFooter, DocumentBadge, type ProgressStep } from '@/components/ui/cards';
 import type { PedidoStatus, PedidoAnexo } from '@/types';
 import type { PedidoStatusLog, PedidoAcompanhamento } from '@/services/acompanhamento';
 
@@ -64,6 +64,24 @@ const STEPS: { key: PedidoStatus; label: string; icon: React.ElementType; color:
 const STEP_INDEX = Object.fromEntries(STEPS.map((s, i) => [s.key, i])) as Record<PedidoStatus, number>;
 const STEP_META = Object.fromEntries(STEPS.map((s, i) => [s.key, { ...s, index: i }])) as Record<PedidoStatus, { key: PedidoStatus; label: string; icon: React.ElementType; color: string; index: number }>;
 const FATURADO_IDX = STEP_INDEX.faturado;
+
+// Jornada resumida do card — 5 etapas rotuladas (mesmo padrão da Central de Pedidos).
+// As 9 etapas do pipeline detalhado (drawer) são colapsadas nesses 5 marcos.
+const CARD_STEPS: ProgressStep[] = [
+  { key: 'aprovado', label: 'Aprovado', color: '#3b82f6', icon: CheckCircle2 },
+  { key: 'producao', label: 'Produção', color: '#f59e0b', icon: Factory },
+  { key: 'faturado', label: 'Faturado', color: '#14b8a6', icon: FileCheck2 },
+  { key: 'entrega',  label: 'Em rota',  color: '#0ea5e9', icon: Truck },
+  { key: 'entregue', label: 'Entregue', color: '#22c55e', icon: PackageCheck },
+];
+function cardStepIndex(status: PedidoStatus): number {
+  const i = STEP_INDEX[status];
+  if (i <= STEP_INDEX.liberado) return 0;   // aprovado, liberado
+  if (i <= STEP_INDEX.producao) return 1;   // mapeamento, ferragem, comercial, produção
+  if (i === STEP_INDEX.faturado) return 2;
+  if (i === STEP_INDEX.entrega) return 3;
+  return 4;                                  // finalizado
+}
 
 // ─── Documentos ──────────────────────────────────────────
 function classifyAnexo(tipo: string): 'nf' | 'boleto' | 'outro' {
@@ -206,24 +224,32 @@ function PedidoCard({ pedido, onOpen, index, hoje }: {
           {pedido.cliente_cidade && <span className="inline-flex items-center gap-1 text-gray-400"><MapPin className="w-3 h-3" />{pedido.cliente_cidade}/{pedido.cliente_uf}</span>}
         </div>
 
-        {/* Documentos */}
-        {(faturadoOuAlem(pedido) || pedido.previsao_embarque) && (
-          <div className="flex items-center justify-between gap-2 mt-2.5">
-            <DocBadges pedido={pedido} />
-            {pedido.previsao_embarque && <span className="text-[10px] text-amber-600 tabular-nums inline-flex items-center gap-1"><CalendarClock className="w-3 h-3" />{fmtShort(pedido.previsao_embarque)}</span>}
+        {/* Previsão de embarque */}
+        {pedido.previsao_embarque && (
+          <div className="flex items-center gap-2 mt-2.5">
+            <span className="text-[10px] text-amber-600 tabular-nums inline-flex items-center gap-1"><CalendarClock className="w-3 h-3" />Embarque {fmtShort(pedido.previsao_embarque)}</span>
           </div>
         )}
         {pend && <p className="text-[10px] text-red-600 font-medium mt-1.5 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />Documento obrigatório pendente</p>}
       </div>
 
-      {/* Timeline compacta */}
-      <div className="px-4 pb-3.5 pt-1"><MiniPipeline status={pedido.status} /></div>
-
-      <div className="px-4 pb-3 -mt-1">
-        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[hsl(142,93%,8%)] group-hover:gap-1.5 transition-all">
-          Ver detalhes <ChevronRight className="w-3 h-3" />
-        </span>
+      {/* Jornada rotulada (mesmo padrão da Central de Pedidos) */}
+      <div className="px-4 pb-3 pt-1">
+        <ProgressSteps steps={CARD_STEPS} currentIndex={cardStepIndex(pedido.status)} />
       </div>
+
+      {/* Rodapé de ações: documentos + botão principal */}
+      <CardActionFooter
+        left={<>
+          <DocumentBadge kind="nf" ok={temNF(pedido)} />
+          <DocumentBadge kind="boleto" ok={temBoleto(pedido)} />
+        </>}
+        right={
+          <span className="inline-flex items-center gap-1 rounded-xl bg-[hsl(142,93%,8%)] text-white text-[11px] font-semibold px-3 py-1.5 group-hover:brightness-125 transition-all">
+            Ver detalhes do pedido <ChevronRight className="w-3 h-3" />
+          </span>
+        }
+      />
     </EntityCard>
   );
 }
