@@ -34,11 +34,12 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// ─── Guard: aprovações (operador, admin, diretor, diretor geral) ───
+// ─── Guard: aprovações (operador, admin, diretor geral) ───
+// Diretor é somente-leitura: não aprova/rejeita (ação de gestão) → sem acesso.
 function OperadorRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const p = perfilDoUsuario(user?.usuario);
-  const ok = isGlobal(p) || p === 'operador' || p === 'diretor';
+  const ok = isGlobal(p) || p === 'operador';
   if (!ok) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
