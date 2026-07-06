@@ -11,7 +11,7 @@ import {
   Truck, History, Share2, ExternalLink, ClipboardCheck, FolderOpen,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import { MetricCard as KpiCard } from '@/components/ui/cards';
+import { MetricCard as KpiCard, EntityCard, Badge, CardActionFooter } from '@/components/ui/cards';
 import { useNavigate } from 'react-router-dom';
 import { useFinanceiro } from '@/hooks/useFinanceiro';
 import { useIsDesktop } from '@/hooks/useMediaQuery';
@@ -110,48 +110,45 @@ function QuickChip({ label, active, onClick, count }: { label: string; active: b
 
 // ─── Card ────────────────────────────────────────────────
 function DocCard({ pedido, onOpen, index, conferido }: { pedido: PedidoFinanceiro; onOpen: (p: PedidoFinanceiro) => void; index: number; conferido?: boolean }) {
-  const reduce = useReducedMotion();
   const s = docStatus(pedido);
   const nBol = boletos(pedido).length;
 
   return (
-    <motion.div
-      layout={!reduce}
-      initial={reduce ? false : { opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: Math.min(index * 0.03, 0.25), ease: [0.22, 1, 0.36, 1] }}
-      onClick={() => onOpen(pedido)}
-      className="group rounded-2xl bg-white border border-gray-200/70 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer overflow-hidden flex flex-col"
-      style={{ borderLeft: `3px solid ${DOC_META[s].border}` }}
-    >
+    <EntityCard layout index={index} onClick={() => onOpen(pedido)} accent={DOC_META[s].border}>
       <div className="p-4 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-mono text-xs text-gray-400">#{pedido.numero_pedido}</span>
           <StatusPill s={s} />
-          {exigeAtencao(pedido) && <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200"><AlertTriangle className="w-2.5 h-2.5" />Atenção</span>}
-          {conferido && <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200"><Check className="w-2.5 h-2.5" />Conferido</span>}
+          {exigeAtencao(pedido) && <Badge tone="danger" icon={AlertTriangle}>Atenção</Badge>}
+          {conferido && <Badge tone="positive" icon={Check}>Conferido</Badge>}
           <span className="ml-auto text-[10px] text-gray-400 tabular-nums">{formatDate(pedido.data_emissao)}</span>
         </div>
 
-        <p className="font-semibold text-gray-900 text-[15px] mt-2 leading-snug line-clamp-2 group-hover:text-[hsl(142,93%,8%)] transition-colors">{nomeCliente(pedido)}</p>
-        <p className="text-[11px] text-gray-400 mt-0.5 font-mono truncate">{pedido.cliente_cnpj}</p>
-
-        {/* Documentos */}
-        <div className="flex flex-wrap items-center gap-1.5 mt-3">
-          <DocBadge ok={temNF(pedido)} label="NF" count={nfs(pedido).length} />
-          <DocBadge ok={temBoleto(pedido)} label="Boleto" count={nBol} />
-          {pedido.total_pedido_venda > 0 && <span className="ml-auto text-xs font-bold text-gray-900 tabular-nums">{formatCurrencyK(pedido.total_pedido_venda)}</span>}
+        <div className="flex items-start justify-between gap-2 mt-2">
+          <div className="min-w-0">
+            <p className="font-semibold text-gray-900 text-[15px] leading-snug line-clamp-2 group-hover:text-[hsl(142,93%,8%)] transition-colors">{nomeCliente(pedido)}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5 font-mono truncate">{pedido.cliente_cnpj}</p>
+          </div>
+          {pedido.total_pedido_venda > 0 && <p className="font-bold text-base tabular-nums text-gray-900 flex-shrink-0">{formatCurrencyK(pedido.total_pedido_venda)}</p>}
         </div>
 
-        {/* Integridade */}
+        {/* Integridade documental */}
         <div className="mt-3"><IntegridadeBar pct={integridade(pedido)} /></div>
       </div>
 
-      <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-gray-50/60 border-t border-gray-100">
-        <span className="text-[11px] text-gray-400 truncate">{pedido.cliente_cidade ? `${pedido.cliente_cidade}/${pedido.cliente_uf}` : (pedido.representante ?? '')}</span>
-        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[hsl(142,93%,8%)] group-hover:gap-1.5 transition-all flex-shrink-0">Ver detalhes<ChevronRight className="w-3 h-3" /></span>
-      </div>
-    </motion.div>
+      {/* Rodapé: documentos + ação (padrão da referência) */}
+      <CardActionFooter
+        left={<>
+          <DocBadge ok={temNF(pedido)} label="NF" count={nfs(pedido).length} />
+          <DocBadge ok={temBoleto(pedido)} label="Boleto" count={nBol} />
+        </>}
+        right={
+          <span className="inline-flex items-center gap-1 rounded-xl bg-[hsl(142,93%,8%)] text-white text-[11px] font-semibold px-3 py-1.5 group-hover:brightness-125 transition-all">
+            Ver detalhes <ChevronRight className="w-3 h-3" />
+          </span>
+        }
+      />
+    </EntityCard>
   );
 }
 
