@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { useAcompanhamento } from '@/hooks/useAcompanhamento';
+import { useAuth } from '@/hooks/useAuth';
 import type { PedidoStatus, PedidoAnexo } from '@/types';
 import type { PedidoStatusLog, PedidoAcompanhamento } from '@/services/acompanhamento';
 
@@ -374,6 +375,10 @@ function DrawerSecao({ titulo, icon: Icon, children }: { titulo: string; icon: R
 }
 
 function PedidoDrawer({ pedido, hoje, onClose }: { pedido: PedidoAcompanhamento; hoje: Date; onClose: () => void }) {
+  const { user } = useAuth();
+  // Representante puro (não admin, não operador) não vê data/hora nem o autor
+  // ("por X") das atualizações de status — são dados internos do ERP.
+  const isRep = !user?.usuario?.admin && !user?.usuario?.operador;
   const idx = STEP_INDEX[pedido.status];
   const prox = proximaEtapa(pedido);
   const anexos = pedido.anexos ?? [];
@@ -433,10 +438,10 @@ function PedidoDrawer({ pedido, hoje, onClose }: { pedido: PedidoAcompanhamento;
                       <span className="absolute -left-5 top-0.5 w-3.5 h-3.5 rounded-full border-2 border-white" style={{ backgroundColor: (done || atual) ? s.color : '#e5e7eb' }} />
                       <div className="flex items-center justify-between gap-2">
                         <p className={cn('text-xs', atual ? 'font-bold text-gray-900' : done ? 'font-medium text-gray-700' : 'text-gray-400')}>{s.label}{atual && ' · atual'}</p>
-                        {log && <span className="text-[10px] text-gray-400 tabular-nums">{fmtFull(log.created_at)}</span>}
+                        {log && !isRep && <span className="text-[10px] text-gray-400 tabular-nums">{fmtFull(log.created_at)}</span>}
                       </div>
                       {log?.observacao && <p className="text-[11px] text-gray-500">{log.observacao}</p>}
-                      {log?.responsavel && <p className="text-[10px] text-gray-400">por {log.responsavel}</p>}
+                      {log?.responsavel && !isRep && <p className="text-[10px] text-gray-400">por {log.responsavel}</p>}
                     </div>
                   );
                 })}
@@ -480,7 +485,8 @@ function PedidoDrawer({ pedido, hoje, onClose }: { pedido: PedidoAcompanhamento;
             </div>
           </DrawerSecao>
 
-          {/* Histórico */}
+          {/* Histórico — oculto para representantes (auditoria interna de quem/quando) */}
+          {!isRep && (
           <DrawerSecao titulo="Histórico de movimentações" icon={History}>
             {pedido.logs.length === 0 ? <p className="text-xs text-gray-400">Sem histórico registrado.</p> : (
               <div className="space-y-1.5">
@@ -501,6 +507,7 @@ function PedidoDrawer({ pedido, hoje, onClose }: { pedido: PedidoAcompanhamento;
               </div>
             )}
           </DrawerSecao>
+          )}
         </div>
       </div>
     </div>

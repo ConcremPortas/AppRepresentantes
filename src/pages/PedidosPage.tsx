@@ -17,6 +17,7 @@ import {
   BarChart3, Clock, User, History, Download,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { useAuth } from '@/hooks/useAuth';
 import type { PedidoVenda } from '@/types';
 import { usePedidosCompleto, useRepresentantesUnicos, useSituacoesEntrega } from '@/hooks/usePedidosVenda';
 import { useIsDesktop } from '@/hooks/useMediaQuery';
@@ -325,6 +326,10 @@ function DrawerSecao({ titulo, icon: Icon, children }: { titulo: string; icon: R
 }
 
 function PedidoDrawer({ pedido, onClose }: { pedido: PedidoVenda; onClose: () => void }) {
+  const { user } = useAuth();
+  // Representante puro (não admin, não operador) não vê o histórico de status
+  // com data/hora e autor — é auditoria interna do ERP.
+  const isRep = !user?.usuario?.admin && !user?.usuario?.operador;
   const etapa = etapaDe(pedido);
   const idx = ETAPA_META[etapa].index;
   const itens = getPedidoItens(pedido);
@@ -463,7 +468,8 @@ function PedidoDrawer({ pedido, onClose }: { pedido: PedidoVenda; onClose: () =>
             </div>
           </DrawerSecao>
 
-          {/* Histórico */}
+          {/* Histórico — oculto para representantes (auditoria interna de quem/quando) */}
+          {!isRep && (
           <DrawerSecao titulo="Histórico de status" icon={History}>
             {historico.length === 0 ? (
               <p className="text-xs text-gray-400">Sem histórico de alterações registrado.</p>
@@ -486,6 +492,7 @@ function PedidoDrawer({ pedido, onClose }: { pedido: PedidoVenda; onClose: () =>
               </div>
             )}
           </DrawerSecao>
+          )}
         </div>
       </div>
     </div>
