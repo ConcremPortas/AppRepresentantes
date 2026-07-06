@@ -6,6 +6,7 @@ import SearchInput from '@/components/ui/SearchInput';
 import Pagination from '@/components/ui/Pagination';
 import PageContainer from '@/components/ui/PageContainer';
 import Avatar from '@/components/ui/Avatar';
+import { EntityCard } from '@/components/ui/cards';
 import { useIsDesktop } from '@/hooks/useMediaQuery';
 import {
   Plus, FileText, Clock, CheckCircle, XCircle, Send, RotateCcw, Pencil, Trash2,
@@ -122,14 +123,7 @@ function QuoteCard({ orc, a, index }: { orc: Orcamento; a: QuoteActions; index: 
   const itens = orc.itens ?? [];
 
   return (
-    <motion.div
-      layout
-      initial={reduce ? false : { opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.3), ease: [0.22, 1, 0.36, 1] }}
-      className="rounded-2xl bg-white border border-gray-200/70 shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col"
-      style={{ borderTop: `3px solid ${STATUS_CONFIG[orc.status].accent}` }}
-    >
+    <EntityCard layout index={index} accent={STATUS_CONFIG[orc.status].accent}>
       <div className="p-4 flex-1">
         {/* Linha 1: nº + status | ações */}
         <div className="flex items-center gap-2">
@@ -221,7 +215,7 @@ function QuoteCard({ orc, a, index }: { orc: Orcamento; a: QuoteActions; index: 
         ) : <span />}
         <span className="text-[11px] text-gray-400 tabular-nums flex-shrink-0">Criado {formatDate(orc.created_at)}</span>
       </div>
-    </motion.div>
+    </EntityCard>
   );
 }
 
