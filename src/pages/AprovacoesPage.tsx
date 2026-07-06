@@ -16,7 +16,7 @@ import {
   ComposedChart, Area, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 import { cn } from '@/utils/cn';
-import { MetricCard } from '@/components/ui/cards';
+import { MetricCard, EntityCard } from '@/components/ui/cards';
 import type { Orcamento, OrcamentoStatusReal } from '@/types';
 import { useOrcamentos } from '@/hooks/useOrcamentos';
 import { useAuth } from '@/hooks/useAuth';
@@ -313,7 +313,6 @@ interface CardProps {
 }
 
 function AprovacaoCard({ orc, canAct, prio, comissaoPct, hoje, checked, onCheck, onOpen, onAprovar, onRejeitar, acting }: CardProps) {
-  const reduce = useReducedMotion();
   const valor = valorOrcamento(orc);
   const nItens = numItens(orc);
   const comissao = comissaoPct !== undefined && valor > 0 ? valor * (comissaoPct / 100) : null;
@@ -321,16 +320,7 @@ function AprovacaoCard({ orc, canAct, prio, comissaoPct, hoje, checked, onCheck,
   const pendente = isPendente(orc);
 
   return (
-    <motion.div
-      layout={!reduce}
-      initial={reduce ? false : { opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={reduce ? undefined : { opacity: 0, scale: 0.96, transition: { duration: 0.25 } }}
-      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-      onClick={() => onOpen(orc)}
-      className="group rounded-2xl bg-white border border-gray-200/70 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer overflow-hidden"
-      style={{ borderLeft: `3px solid ${PRIO_CFG[prio].color}` }}
-    >
+    <EntityCard layout onClick={() => onOpen(orc)} accent={PRIO_CFG[prio].color}>
       <div className="p-4">
         {/* Linha 1: checkbox + nº + status + prioridade | ações rápidas */}
         <div className="flex items-center gap-2 flex-wrap">
@@ -448,7 +438,7 @@ function AprovacaoCard({ orc, canAct, prio, comissaoPct, hoje, checked, onCheck,
           {orc.validade && <span className="hidden sm:inline">Val. {formatDate(orc.validade)}</span>}
         </span>
       </div>
-    </motion.div>
+    </EntityCard>
   );
 }
 

@@ -25,6 +25,7 @@ export default function EntityCard({
       layout={layout && !reduce ? true : undefined}
       initial={reduce ? false : { opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
+      exit={reduce ? undefined : { opacity: 0, scale: 0.96, transition: { duration: 0.2 } }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.03, 0.25), ease: [0.22, 1, 0.36, 1] }}
       onClick={onClick}
       style={{ ...(accent ? { borderLeft: `3px solid ${accent}` } : null), ...style }}
