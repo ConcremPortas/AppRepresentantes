@@ -147,7 +147,7 @@ function RichKPICard({
   const a = ACCENTS[accent];
   const up = (trend?.value ?? 0) >= 0;
   return (
-    <div className="rounded-2xl bg-white border border-gray-200/70 shadow-sm p-4 h-full flex flex-col">
+    <div className="rounded-2xl bg-white border border-gray-200/70 shadow-sm p-4 h-full flex flex-col transition-shadow hover:shadow-md">
       <div className="flex items-start justify-between gap-2">
         <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">{title}</p>
         <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0', a.chip)}>
