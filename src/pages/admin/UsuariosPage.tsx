@@ -1,42 +1,45 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, X, Check, ShieldCheck, User as UserIcon, ToggleLeft, ToggleRight, ClipboardCheck, KeyRound, Eye, EyeOff } from 'lucide-react';
+import { Plus, Pencil, X, Check, ShieldCheck, User as UserIcon, ToggleLeft, ToggleRight, ClipboardCheck, KeyRound, Eye, EyeOff, Briefcase, Crown } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/Card';
 import PageContainer from '@/components/ui/PageContainer';
 import { cn } from '@/utils/cn';
-import type { RepresentanteERP } from '@/types';
+import type { RepresentanteERP, Usuario, Perfil } from '@/types';
 import {
   fetchUsuarios,
-  createUsuario,
   updateUsuario,
   updateSenha,
   linkRepresentante,
   unlinkRepresentante,
+  createUsuarioCompleto,
+  saveUsuarioAcesso,
   type UsuarioComReps,
 } from '@/services/usuarios';
 import { fetchRepresentantes } from '@/services/representantes';
+import { fetchClientGroups } from '@/services/clientGroups';
+import { perfilDoUsuario, PERFIL_LABEL } from '@/constants/perfis';
 
 // ─── Tipo do usuário ───────────────────────────────────
-type TipoUsuario = 'representante' | 'operador' | 'admin';
+type TipoUsuario = Perfil;
 
-function getTipo(u: { admin: boolean; operador: boolean }): TipoUsuario {
-  if (u.admin)    return 'admin';
-  if (u.operador) return 'operador';
-  return 'representante';
+function getTipo(u: Usuario): TipoUsuario {
+  return perfilDoUsuario(u);
 }
 
 // ─── Seletor de tipo ───────────────────────────────────
 function TipoSelector({ value, onChange }: { value: TipoUsuario; onChange: (t: TipoUsuario) => void }) {
   const tipos: { key: TipoUsuario; label: string; desc: string; icon: React.ElementType; color: string }[] = [
-    { key: 'representante', label: 'Representante', desc: 'Cria e envia orçamentos', icon: UserIcon,      color: 'border-blue-300 bg-blue-50 text-blue-700'     },
-    { key: 'operador',      label: 'Operador',      desc: 'Aprova e rejeita orçamentos', icon: ClipboardCheck, color: 'border-sky-300 bg-sky-50 text-sky-700'         },
-    { key: 'admin',         label: 'Administrador', desc: 'Acesso total ao painel', icon: ShieldCheck,   color: 'border-amber-300 bg-amber-50 text-amber-700'  },
+    { key: 'representante',  label: 'Representante',  desc: 'Cria e envia orçamentos',      icon: UserIcon,      color: 'border-blue-300 bg-blue-50 text-blue-700'     },
+    { key: 'operador',       label: 'Operador',       desc: 'Aprova e rejeita orçamentos',  icon: ClipboardCheck, color: 'border-sky-300 bg-sky-50 text-sky-700'        },
+    { key: 'admin',          label: 'Administrador',  desc: 'Acesso total ao painel',       icon: ShieldCheck,   color: 'border-amber-300 bg-amber-50 text-amber-700'  },
+    { key: 'diretor',        label: 'Diretor',        desc: 'Vê os grupos vinculados',      icon: Briefcase,     color: 'border-indigo-300 bg-indigo-50 text-indigo-700' },
+    { key: 'diretor_geral',  label: 'Diretor Geral',  desc: 'Vê todos os grupos',           icon: Crown,         color: 'border-violet-300 bg-violet-50 text-violet-700' },
   ];
 
   return (
     <div>
       <label className="text-xs font-semibold text-gray-500 mb-2 block">Tipo de acesso</label>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {tipos.map(({ key, label, desc, icon: Icon, color }) => (
           <button
             key={key}
@@ -57,12 +60,44 @@ function TipoSelector({ value, onChange }: { value: TipoUsuario; onChange: (t: T
   );
 }
 
+// ─── Multi-select de grupos (perfil Diretor) ───────────
+function GrupoMultiSelect({ value, onChange }: { value: string[]; onChange: (ids: string[]) => void }) {
+  const { data: grupos = [], isLoading } = useQuery({ queryKey: ['client-groups'], queryFn: fetchClientGroups });
+  const toggle = (id: string) => onChange(value.includes(id) ? value.filter(x => x !== id) : [...value, id]);
+  return (
+    <div>
+      <label className="text-xs font-semibold text-gray-500 mb-2 block">
+        Grupos de clientes <span className="text-red-500">*</span>
+      </label>
+      {isLoading ? (
+        <p className="text-xs text-gray-400">Carregando grupos…</p>
+      ) : grupos.length === 0 ? (
+        <p className="text-xs text-amber-600">Nenhum grupo cadastrado (aplique a migração de grupos no banco).</p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {grupos.filter(g => g.is_active).map(g => {
+            const on = value.includes(g.id);
+            return (
+              <button key={g.id} type="button" onClick={() => toggle(g.id)}
+                className={cn('text-xs font-medium px-2.5 py-1 rounded-full border transition-colors',
+                  on ? 'bg-[hsl(142,93%,8%)] text-white border-[hsl(142,93%,8%)]' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300')}>
+                {g.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {value.length === 0 && <p className="text-[11px] text-gray-400 mt-1.5">Selecione ao menos 1 grupo.</p>}
+    </div>
+  );
+}
+
 // ─── Modal Criar Usuário ───────────────────────────────
 function CriarModal({
   onClose, onSave, saving, error,
 }: {
   onClose: () => void;
-  onSave: (nome: string, email: string, senha: string, admin: boolean, operador: boolean) => void;
+  onSave: (nome: string, email: string, senha: string, perfil: TipoUsuario, grupoIds: string[]) => void;
   saving: boolean;
   error?: string;
 }) {
@@ -70,6 +105,7 @@ function CriarModal({
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [tipo,  setTipo]  = useState<TipoUsuario>('representante');
+  const [grupoIds, setGrupoIds] = useState<string[]>([]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -106,6 +142,13 @@ function CriarModal({
           </div>
 
           <TipoSelector value={tipo} onChange={setTipo} />
+
+          {tipo === 'diretor' && <GrupoMultiSelect value={grupoIds} onChange={setGrupoIds} />}
+          {tipo === 'diretor_geral' && (
+            <p className="text-xs text-violet-700 bg-violet-50 border border-violet-200 rounded-lg px-3 py-2">
+              Diretor Geral possui acesso completo a todos os grupos.
+            </p>
+          )}
         </div>
 
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-gray-100">
@@ -113,8 +156,8 @@ function CriarModal({
             Cancelar
           </button>
           <button
-            onClick={() => onSave(nome, email, senha, tipo === 'admin', tipo === 'operador')}
-            disabled={saving || !nome || !email || !senha}
+            onClick={() => onSave(nome, email, senha, tipo, grupoIds)}
+            disabled={saving || !nome || !email || !senha || (tipo === 'diretor' && grupoIds.length === 0)}
             className="h-9 px-4 text-sm bg-[hsl(142,93%,8%)] text-white rounded-lg hover:bg-[hsl(142,93%,15%)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {saving && <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
@@ -135,7 +178,7 @@ function EditarModal({
   todosReps: RepresentanteERP[];
   onClose: () => void;
   saving: boolean;
-  onUpdate: (nome: string, admin: boolean, operador: boolean) => void;
+  onUpdate: (nome: string, perfil: TipoUsuario, grupoIds: string[]) => void;
   onLink: (repId: string) => void;
   onUnlink: (repId: string) => void;
   onAlterarSenha: (novaSenha: string) => void;
@@ -145,6 +188,7 @@ function EditarModal({
 }) {
   const [nome, setNome] = useState(usuario.nome);
   const [tipo, setTipo] = useState<TipoUsuario>(getTipo(usuario));
+  const [grupoIds, setGrupoIds] = useState<string[]>(usuario.grupoIds ?? []);
   const [showSenha, setShowSenha] = useState(false);
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
@@ -180,6 +224,13 @@ function EditarModal({
           </div>
 
           <TipoSelector value={tipo} onChange={setTipo} />
+
+          {tipo === 'diretor' && <GrupoMultiSelect value={grupoIds} onChange={setGrupoIds} />}
+          {tipo === 'diretor_geral' && (
+            <p className="text-xs text-violet-700 bg-violet-50 border border-violet-200 rounded-lg px-3 py-2">
+              Diretor Geral possui acesso completo a todos os grupos.
+            </p>
+          )}
 
           {/* Vínculos com rep codes — só para representante */}
           {tipo === 'representante' && (
@@ -287,8 +338,8 @@ function EditarModal({
             Fechar
           </button>
           <button
-            onClick={() => onUpdate(nome, tipo === 'admin', tipo === 'operador')}
-            disabled={saving || !nome}
+            onClick={() => onUpdate(nome, tipo, grupoIds)}
+            disabled={saving || !nome || (tipo === 'diretor' && grupoIds.length === 0)}
             className="h-9 px-4 text-sm bg-[hsl(142,93%,8%)] text-white rounded-lg hover:bg-[hsl(142,93%,15%)] disabled:opacity-50 flex items-center gap-2"
           >
             {saving && <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
@@ -302,20 +353,21 @@ function EditarModal({
 }
 
 // ─── Badge de tipo ─────────────────────────────────────
+const TIPO_BADGE: Record<Perfil, { cls: string; icon: React.ElementType }> = {
+  admin:         { cls: 'bg-amber-50 text-amber-700 border-amber-200',    icon: ShieldCheck },
+  operador:      { cls: 'bg-sky-50 text-sky-700 border-sky-200',          icon: ClipboardCheck },
+  diretor:       { cls: 'bg-indigo-50 text-indigo-700 border-indigo-200', icon: Briefcase },
+  diretor_geral: { cls: 'bg-violet-50 text-violet-700 border-violet-200', icon: Crown },
+  representante: { cls: 'bg-blue-50 text-blue-700 border-blue-200',        icon: UserIcon },
+};
+
 function TipoBadge({ u }: { u: UsuarioComReps }) {
-  if (u.admin) return (
-    <span className="flex items-center gap-1 text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full font-medium">
-      <ShieldCheck className="w-2.5 h-2.5" />Admin
-    </span>
-  );
-  if (u.operador) return (
-    <span className="flex items-center gap-1 text-[10px] bg-sky-50 text-sky-700 border border-sky-200 px-1.5 py-0.5 rounded-full font-medium">
-      <ClipboardCheck className="w-2.5 h-2.5" />Operador
-    </span>
-  );
+  const p = perfilDoUsuario(u);
+  const c = TIPO_BADGE[p];
+  const Icon = c.icon;
   return (
-    <span className="flex items-center gap-1 text-[10px] bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded-full font-medium">
-      <UserIcon className="w-2.5 h-2.5" />Representante
+    <span className={cn('flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium border', c.cls)}>
+      <Icon className="w-2.5 h-2.5" />{PERFIL_LABEL[p]}
     </span>
   );
 }
@@ -340,8 +392,8 @@ export default function AdminUsuariosPage() {
   });
 
   const criarMutation = useMutation({
-    mutationFn: async ({ nome, email, senha, admin, operador }: { nome: string; email: string; senha: string; admin: boolean; operador: boolean }) => {
-      const result = await createUsuario(nome, email, senha, admin, operador);
+    mutationFn: async ({ nome, email, senha, perfil, grupoIds }: { nome: string; email: string; senha: string; perfil: Perfil; grupoIds: string[] }) => {
+      const result = await createUsuarioCompleto(nome, email, senha, perfil, grupoIds);
       if (result.error) throw new Error(result.error);
       return result;
     },
@@ -350,8 +402,8 @@ export default function AdminUsuariosPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, nome, admin, operador }: { id: string; nome: string; admin: boolean; operador: boolean }) =>
-      updateUsuario(id, { nome, admin, operador }),
+    mutationFn: ({ id, nome, perfil, grupoIds }: { id: string; nome: string; perfil: Perfil; grupoIds: string[] }) =>
+      saveUsuarioAcesso(id, nome, perfil, grupoIds),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-usuarios'] }),
   });
 
@@ -469,7 +521,7 @@ export default function AdminUsuariosPage() {
       {showCriar && (
         <CriarModal
           onClose={() => setShowCriar(false)}
-          onSave={(nome, email, senha, admin, operador) => criarMutation.mutate({ nome, email, senha, admin, operador })}
+          onSave={(nome, email, senha, perfil, grupoIds) => criarMutation.mutate({ nome, email, senha, perfil, grupoIds })}
           saving={criarMutation.isPending}
           error={criarError}
         />
@@ -481,7 +533,7 @@ export default function AdminUsuariosPage() {
           todosReps={todosReps}
           onClose={() => { setEditando(null); setSenhaError(''); setSenhaSucesso(false); }}
           saving={updateMutation.isPending}
-          onUpdate={(nome, admin, operador) => updateMutation.mutate({ id: usuarioEditandoAtualizado.id, nome, admin, operador })}
+          onUpdate={(nome, perfil, grupoIds) => updateMutation.mutate({ id: usuarioEditandoAtualizado.id, nome, perfil, grupoIds })}
           onLink={repId => linkMutation.mutate({ usuarioId: usuarioEditandoAtualizado.id, repId })}
           onUnlink={repId => unlinkMutation.mutate({ usuarioId: usuarioEditandoAtualizado.id, repId })}
           onAlterarSenha={novaSenha => senhaMutation.mutate({ id: usuarioEditandoAtualizado.id, novaSenha })}
