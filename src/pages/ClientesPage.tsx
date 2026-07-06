@@ -5,6 +5,7 @@ import SearchInput from '@/components/ui/SearchInput';
 import Select from '@/components/ui/Select';
 import PageContainer from '@/components/ui/PageContainer';
 import { cn } from '@/utils/cn';
+import { MetricCard } from '@/components/ui/cards';
 import { useSearchParams } from 'react-router-dom';
 import { useCarteira, useClientePedidos } from '@/hooks/useCarteira';
 import { parseDadosTabela } from '@/services/pedidosVenda';
@@ -252,19 +253,9 @@ function ContatoRow({ tipo, valor }: { tipo: 'email' | 'tel'; valor: string }) {
   );
 }
 
-function StatTile({ icon: Icon, label, value, sub, tone }: {
-  icon: React.ElementType; label: string; value: string; sub?: string; tone?: string;
-}) {
-  return (
-    <div className="rounded-2xl bg-white border border-gray-200/70 shadow-sm p-4 min-w-0 overflow-hidden">
-      <div className="flex items-center gap-2 text-gray-400 min-w-0">
-        <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-        <p className="text-[10px] font-semibold uppercase tracking-wider truncate">{label}</p>
-      </div>
-      <p className={cn('text-lg font-bold mt-1.5 tabular-nums leading-tight', tone ?? 'text-gray-900')}>{value}</p>
-      {sub && <p className="text-[11px] text-gray-400 mt-0.5 truncate">{sub}</p>}
-    </div>
-  );
+// StatTile usa o MetricCard compartilhado (variante grid) — mesma linguagem do sistema.
+function StatTile(props: { icon: React.ElementType; label: string; value: string; sub?: string; tone?: string }) {
+  return <MetricCard grid {...props} />;
 }
 
 type InsightTone = 'good' | 'risk' | 'info' | 'opp';
