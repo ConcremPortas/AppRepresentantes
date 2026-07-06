@@ -20,6 +20,7 @@ import {
 import { cn } from '@/utils/cn';
 import { useSidebar } from './SidebarContext';
 import { useAuth } from '@/hooks/useAuth';
+import { perfilDoUsuario, PERFIL_LABEL } from '@/constants/perfis';
 import { useAlertas } from '@/hooks/useAlertas';
 import ConcremLogo from './ConcremLogo';
 import Avatar from '@/components/ui/Avatar';
@@ -138,8 +139,10 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const { unreadCount } = useAlertas();
   const location = useLocation();
 
-  const isAdmin    = user?.usuario?.admin    ?? false;
-  const isOperador = user?.usuario?.operador ?? false;
+  const perfil = perfilDoUsuario(user?.usuario);
+  const isAdmin    = perfil === 'admin' || perfil === 'diretor_geral'; // menu completo
+  const isOperador = perfil === 'operador';
+  const isDiretor  = perfil === 'diretor';
   const GROUPS = isAdmin ? ADMIN_GROUPS : isOperador ? OPERADOR_GROUPS : REP_GROUPS;
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
@@ -163,7 +166,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
   const nome = user?.usuario?.nome ?? user?.representante?.nome ?? 'Usuário';
   const avatarUrl = user?.usuario?.avatar_url ?? null;
-  const avatarBg = isAdmin ? 'bg-amber-600' : isOperador ? 'bg-sky-600' : 'bg-[#1a4025]';
+  const avatarBg = isAdmin ? 'bg-amber-600' : isOperador ? 'bg-sky-600' : isDiretor ? 'bg-indigo-600' : 'bg-[#1a4025]';
   const emailLabel = user?.email?.split('@')[0] ?? 'portal';
 
 
@@ -207,19 +210,15 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
         </div>
 
         {/* Badge de papel */}
-        {(isAdmin || isOperador) && !isCollapsed && (
+        {perfil !== 'representante' && !isCollapsed && (
           <div className="px-4 py-2 border-b border-white/8">
-            {isAdmin ? (
-              <span className="flex items-center gap-1.5 text-[10px] text-amber-400 font-semibold uppercase tracking-wider">
-                <ShieldCheck className="w-3 h-3" />
-                Administrador
-              </span>
-            ) : (
-              <span className="flex items-center gap-1.5 text-[10px] text-sky-400 font-semibold uppercase tracking-wider">
-                <ClipboardCheck className="w-3 h-3" />
-                Operador
-              </span>
-            )}
+            <span className={cn(
+              'flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider',
+              isAdmin ? 'text-amber-400' : isOperador ? 'text-sky-400' : 'text-indigo-300',
+            )}>
+              <ShieldCheck className="w-3 h-3" />
+              {PERFIL_LABEL[perfil]}
+            </span>
           </div>
         )}
 
