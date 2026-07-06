@@ -15,7 +15,7 @@ import {
 import { cn } from '@/utils/cn';
 import { useAcompanhamento } from '@/hooks/useAcompanhamento';
 import { useAuth } from '@/hooks/useAuth';
-import { MetricCard as KpiCard } from '@/components/ui/cards';
+import { MetricCard as KpiCard, EntityCard, Badge } from '@/components/ui/cards';
 import type { PedidoStatus, PedidoAnexo } from '@/types';
 import type { PedidoStatusLog, PedidoAcompanhamento } from '@/services/acompanhamento';
 
@@ -159,7 +159,6 @@ function MiniPipeline({ status }: { status: PedidoStatus }) {
 function PedidoCard({ pedido, onOpen, index, hoje }: {
   pedido: PedidoAcompanhamento; onOpen: (p: PedidoAcompanhamento) => void; index: number; hoje: Date;
 }) {
-  const reduce = useReducedMotion();
   const prox = proximaEtapa(pedido);
   const dias = diasNoStatus(pedido, hoje);
   const atraso = emAtraso(pedido, hoje);
@@ -168,21 +167,18 @@ function PedidoCard({ pedido, onOpen, index, hoje }: {
   const temValor = pedido.total_pedido_venda > 0;
 
   return (
-    <motion.div
-      layout={!reduce}
-      initial={reduce ? false : { opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: Math.min(index * 0.03, 0.25), ease: [0.22, 1, 0.36, 1] }}
+    <EntityCard
+      layout
+      index={index}
       onClick={() => onOpen(pedido)}
-      className="group rounded-2xl bg-white border border-gray-200/70 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer overflow-hidden flex flex-col"
-      style={{ borderLeft: `3px solid ${atraso ? '#ef4444' : estaParado ? '#f97316' : STEP_META[pedido.status].color}` }}
+      accent={atraso ? '#ef4444' : estaParado ? '#f97316' : STEP_META[pedido.status].color}
     >
       <div className="p-4 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-mono text-xs text-gray-400">#{pedido.numero_pedido}</span>
           <StatusPill status={pedido.status} />
-          {atraso && <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200"><AlertTriangle className="w-2.5 h-2.5" />Atraso</span>}
-          {estaParado && <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-orange-50 text-orange-600 border border-orange-200"><Clock className="w-2.5 h-2.5" />Parado</span>}
+          {atraso && <Badge tone="danger" icon={AlertTriangle}>Atraso</Badge>}
+          {estaParado && <Badge tone="warning" icon={Clock}>Parado</Badge>}
           <span className="ml-auto text-[10px] text-gray-400 tabular-nums">Emissão {fmtShort(pedido.data_emissao)}</span>
         </div>
 
@@ -228,7 +224,7 @@ function PedidoCard({ pedido, onOpen, index, hoje }: {
           Ver detalhes <ChevronRight className="w-3 h-3" />
         </span>
       </div>
-    </motion.div>
+    </EntityCard>
   );
 }
 
