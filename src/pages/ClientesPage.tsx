@@ -5,6 +5,7 @@ import SearchInput from '@/components/ui/SearchInput';
 import Select from '@/components/ui/Select';
 import PageContainer from '@/components/ui/PageContainer';
 import { cn } from '@/utils/cn';
+import { useSearchParams } from 'react-router-dom';
 import { useCarteira, useClientePedidos } from '@/hooks/useCarteira';
 import { parseDadosTabela } from '@/services/pedidosVenda';
 import type { ClienteCarteira, ClientePedido } from '@/services/carteira';
@@ -51,6 +52,7 @@ function parseISO(d: string): Date | null {
   return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
 }
 const DAY = 24 * 60 * 60 * 1000;
+const PRAZO_PADRAO = 30; // dias — prazo padrão fixo de recompra por cliente
 
 // ─── Analytics por cliente (a partir dos pedidos reais) ─
 interface ClienteAnalytics {
@@ -59,8 +61,10 @@ interface ClienteAnalytics {
   ticketMedio: number;
   ultimoPedido: Date | null;
   intervaloMedio: number | null;     // dias entre compras
-  proximaCompra: Date | null;        // estimada
-  diasAtraso: number;                // > 0 = atrasado
+  proximaCompra: Date | null;        // último pedido + 30 dias (prazo padrão fixo)
+  diasAtraso: number;                // > 0 = atrasado (passou do prazo de 30 dias)
+  diasDesdeUltimo: number | null;    // dias desde a última compra
+  movimentacao: 'ativo' | 'atencao' | 'atrasado' | 'dormente' | 'sem_historico';
   serieMensal: { mes: string; valor: number }[];
   freqMensal: { mes: string; count: number }[];
   freqStats: {
@@ -70,6 +74,8 @@ interface ClienteAnalytics {
     constancia: 'alta' | 'média' | 'baixa';
     comportamento: string;
     chart: { mes: string; count: number; trend: number }[];
+    cicloDias: number | null;         // frequência real (intervalo médio) em dias
+    historicoInsuficiente: boolean;   // < 2 compras → não dá p/ calcular frequência
   };
   topProduto: { nome: string; qtd: number; pctPedidos: number } | null;
   mixProdutos: { name: string; value: number }[];
@@ -94,10 +100,18 @@ function computeAnalytics(pedidos: ClientePedido[], today: Date): ClienteAnalyti
     for (let i = 1; i < distintas.length; i++) soma += (distintas[i] - distintas[i - 1]) / DAY;
     intervaloMedio = soma / (distintas.length - 1);
   }
-  const proximaCompra = ultimoPedido && intervaloMedio
-    ? new Date(ultimoPedido.getTime() + Math.round(intervaloMedio) * DAY)
-    : null;
+  // Próxima compra = ÚLTIMO PEDIDO + 30 dias (prazo padrão fixo — NÃO o ciclo médio).
+  // Vale mesmo com 1 pedido; só é null quando o cliente não tem nenhum pedido.
+  const proximaCompra = ultimoPedido ? new Date(ultimoPedido.getTime() + PRAZO_PADRAO * DAY) : null;
   const diasAtraso = proximaCompra ? Math.floor((today.getTime() - proximaCompra.getTime()) / DAY) : 0;
+  const diasDesdeUltimo = ultimoPedido ? Math.floor((today.getTime() - ultimoPedido.getTime()) / DAY) : null;
+  // Classificação de movimentação (por dias desde a última compra)
+  const movimentacao: ClienteAnalytics['movimentacao'] =
+    totalPedidos === 0 || diasDesdeUltimo === null ? 'sem_historico'
+    : diasDesdeUltimo <= 20 ? 'ativo'
+    : diasDesdeUltimo <= 30 ? 'atencao'
+    : diasDesdeUltimo <= 60 ? 'atrasado'
+    : 'dormente';
 
   // Série mensal (últimos 12 meses) — valor e frequência
   const serieMensal: { mes: string; valor: number }[] = [];
@@ -143,6 +157,8 @@ function computeAnalytics(pedidos: ClientePedido[], today: Date): ClienteAnalyti
   const freqStats: ClienteAnalytics['freqStats'] = {
     media: freqMedia, total: freqTotal, mesesAtivos, pico: picoFreq,
     maxConsecutivos: maxStreak, slope: slopeF, constancia, comportamento, chart: freqChart,
+    cicloDias: intervaloMedio != null ? Math.round(intervaloMedio) : null,
+    historicoInsuficiente: distintas.length < 2,
   };
 
   // Tendência: últimos 3 meses vs 3 anteriores
@@ -184,9 +200,18 @@ function computeAnalytics(pedidos: ClientePedido[], today: Date): ClienteAnalyti
 
   return {
     totalPedidos, receita, ticketMedio, ultimoPedido, intervaloMedio, proximaCompra,
-    diasAtraso, serieMensal, freqMensal, freqStats, topProduto, mixProdutos: mixTop, recentes, tendencia,
+    diasAtraso, diasDesdeUltimo, movimentacao, serieMensal, freqMensal, freqStats, topProduto, mixProdutos: mixTop, recentes, tendencia,
   };
 }
+
+// Metadados visuais da classificação de movimentação do cliente
+const MOV_META: Record<ClienteAnalytics['movimentacao'], { label: string; chip: string; dot: string }> = {
+  ativo:         { label: 'Ativo',         chip: 'bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500' },
+  atencao:       { label: 'Atenção',       chip: 'bg-amber-50 text-amber-700',     dot: 'bg-amber-500' },
+  atrasado:      { label: 'Atrasado',      chip: 'bg-red-50 text-red-600',         dot: 'bg-red-500' },
+  dormente:      { label: 'Dormente',      chip: 'bg-gray-800 text-white',         dot: 'bg-gray-300' },
+  sem_historico: { label: 'Sem histórico', chip: 'bg-gray-100 text-gray-500',      dot: 'bg-gray-300' },
+};
 
 // ─── Micro-componentes ────────────────────────────────
 function ClienteAvatar({ nome, semNome, size = 'md' }: { nome: string; semNome: boolean; size?: 'sm' | 'md' | 'lg' }) {
@@ -301,7 +326,7 @@ function FreqTooltip({ active, payload, label, media }: any) {
 }
 
 function FrequenciaCompra({ stats, reduce }: { stats: ClienteAnalytics['freqStats']; reduce: boolean }) {
-  const { media, total, mesesAtivos, pico, constancia, comportamento, chart } = stats;
+  const { media, total, mesesAtivos, pico, constancia, comportamento, chart, cicloDias, historicoInsuficiente } = stats;
   const maxCount = pico?.count ?? 0;
   const cor = constancia === 'alta'
     ? { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' }
@@ -325,6 +350,12 @@ function FrequenciaCompra({ stats, reduce }: { stats: ClienteAnalytics['freqStat
           <FreqStat label="Média/mês" value={media.toFixed(1)} />
           <FreqStat label="Pico" value={String(maxCount)} sub={pico?.mes} tone="text-[hsl(142,93%,8%)]" />
           <FreqStat label="Meses ativos" value={`${mesesAtivos}/12`} />
+        </div>
+
+        {/* Frequência real (histórica) vs prazo padrão */}
+        <div className="flex items-center justify-between rounded-xl bg-gray-50 border border-gray-100 px-3 py-1.5 text-[11px]">
+          <span className="text-gray-500">Frequência real: <span className="font-semibold text-gray-800">{historicoInsuficiente ? 'histórico insuficiente' : `a cada ~${cicloDias} dias`}</span></span>
+          <span className="text-gray-400">Prazo padrão <span className="font-semibold text-gray-600">30d</span></span>
         </div>
 
         {/* Gráfico */}
@@ -390,22 +421,32 @@ function ClienteIntel({ cliente, onBack }: { cliente: ClienteCarteira; onBack: (
   const telefones = parseContatos(cliente.cliente_telefone);
   const local = cliente.cliente_cidade ? `${cliente.cliente_cidade}/${cliente.cliente_uf}` : null;
 
-  const atrasado = a.proximaCompra !== null && a.diasAtraso > 0;
+  const atrasado = a.movimentacao === 'atrasado' || a.movimentacao === 'dormente';
 
   // ── Insights (regras sobre dados reais) ──
   const insights = useMemo(() => {
     const list: { tone: InsightTone; title: string; text: string }[] = [];
     if (a.totalPedidos === 0) {
-      list.push({ tone: 'info', title: 'Sem pedidos no período', text: 'Este cliente ainda não possui pedidos registrados para o seu acesso.' });
+      list.push({ tone: 'info', title: 'Sem histórico de compras', text: 'Este cliente ainda não possui pedidos registrados para o seu acesso.' });
       return list;
     }
-    if (atrasado && a.intervaloMedio) {
-      list.push({
-        tone: 'risk', title: a.diasAtraso > a.intervaloMedio ? 'Cliente dormente' : 'Compra atrasada',
-        text: `Compra esperada há ${a.diasAtraso} dia(s) (ciclo médio de ${Math.round(a.intervaloMedio)} dias). Vale um contato de reativação.`,
-      });
-    } else if (a.proximaCompra) {
-      list.push({ tone: 'good', title: 'Ciclo de compra em dia', text: `Próxima compra estimada para ${formatDate(a.proximaCompra.toISOString().slice(0, 10))}.` });
+    const ultimoStr = a.ultimoPedido ? formatDate(a.ultimoPedido.toISOString().slice(0, 10)) : '—';
+    const proxStr = a.proximaCompra ? formatDate(a.proximaCompra.toISOString().slice(0, 10)) : '—';
+    const cicloTxt = a.freqStats.cicloDias
+      ? ` Frequência histórica: a cada ~${a.freqStats.cicloDias} dias — costumava comprar antes do prazo padrão.`
+      : '';
+    if (a.movimentacao === 'dormente') {
+      list.push({ tone: 'risk', title: 'Cliente dormente',
+        text: `Ultrapassou o prazo padrão de recompra de 30 dias. Última compra ${ultimoStr}, esperada ${proxStr} — atraso de ${a.diasAtraso} dia(s). Recomendação: entrar em contato para reativação.${cicloTxt}` });
+    } else if (a.movimentacao === 'atrasado') {
+      list.push({ tone: 'risk', title: 'Compra atrasada',
+        text: `Passou dos 30 dias sem comprar (esperada ${proxStr}, atraso de ${a.diasAtraso} dia(s)). Vale um contato de reativação.${cicloTxt}` });
+    } else if (a.movimentacao === 'atencao') {
+      list.push({ tone: 'opp', title: 'Próximo do prazo',
+        text: `Faltam ${-a.diasAtraso} dia(s) para o prazo padrão de recompra (${proxStr}). Bom momento para um follow-up.` });
+    } else if (a.movimentacao === 'ativo') {
+      list.push({ tone: 'good', title: 'Cliente ativo',
+        text: `Comprou há ${a.diasDesdeUltimo} dia(s), dentro do prazo padrão de 30 dias.` });
     }
     if (a.tendencia !== null) {
       list.push(a.tendencia >= 0
@@ -421,7 +462,7 @@ function ClienteIntel({ cliente, onBack }: { cliente: ClienteCarteira; onBack: (
       list.push({ tone: 'opp', title: 'Primeira compra', text: 'Cliente com apenas 1 pedido — acompanhar de perto para garantir a recompra.' });
     }
     return list.slice(0, 4);
-  }, [a, atrasado]);
+  }, [a]);
 
   return (
     <motion.div
@@ -453,6 +494,12 @@ function ClienteIntel({ cliente, onBack }: { cliente: ClienteCarteira; onBack: (
               {local && (
                 <span className="flex items-center gap-1 text-xs text-gray-500">
                   <MapPin className="w-3 h-3 text-gray-400" />{local}
+                </span>
+              )}
+              {!isLoading && (
+                <span className={cn('inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold', MOV_META[a.movimentacao].chip)}>
+                  <span className={cn('w-1.5 h-1.5 rounded-full', MOV_META[a.movimentacao].dot)} />
+                  {MOV_META[a.movimentacao].label}
                 </span>
               )}
             </div>
@@ -499,21 +546,31 @@ function ClienteIntel({ cliente, onBack }: { cliente: ClienteCarteira; onBack: (
               sub={a.intervaloMedio ? `a cada ~${Math.round(a.intervaloMedio)} dias` : 'frequência indisponível'} />
             <StatTile icon={Receipt} label="Ticket médio" value={fmtVolume(a.ticketMedio)} tone="text-blue-700"
               sub={a.ultimoPedido ? `último: ${formatDate(a.ultimoPedido.toISOString().slice(0, 10))}` : undefined} />
-            {/* Próxima compra estimada — com alerta visual quando atrasado */}
+            {/* Próxima compra — prazo padrão fixo de 30 dias */}
             <div className={cn(
               'rounded-2xl border shadow-sm p-4 min-w-0 overflow-hidden',
-              atrasado ? 'bg-red-50/60 border-red-200' : 'bg-white border-gray-200/70',
+              atrasado ? 'bg-red-50/60 border-red-200' : a.movimentacao === 'atencao' ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-gray-200/70',
             )}>
-              <div className={cn('flex items-center gap-2', atrasado ? 'text-red-500' : 'text-gray-400')}>
+              <div className={cn('flex items-center gap-2', atrasado ? 'text-red-500' : a.movimentacao === 'atencao' ? 'text-amber-600' : 'text-gray-400')}>
                 <CalendarClock className="w-3.5 h-3.5" />
                 <p className="text-[10px] font-semibold uppercase tracking-wider">Próxima compra</p>
               </div>
               <p className={cn('text-lg font-bold mt-1.5 tabular-nums leading-tight', atrasado ? 'text-red-600' : 'text-gray-900')}>
                 {a.proximaCompra ? formatDate(a.proximaCompra.toISOString().slice(0, 10)) : '—'}
               </p>
-              <p className={cn('text-[11px] mt-0.5', atrasado ? 'text-red-500 font-medium' : 'text-gray-400')}>
-                {atrasado ? `atrasada há ${a.diasAtraso} dia(s)` : a.proximaCompra ? 'estimativa pelo ciclo médio' : 'requer 2+ compras'}
+              <p className={cn('text-[11px] mt-0.5 font-medium', atrasado ? 'text-red-500' : a.movimentacao === 'atencao' ? 'text-amber-600' : 'text-gray-400')}>
+                {a.movimentacao === 'sem_historico' ? 'sem histórico de compras'
+                  : a.movimentacao === 'dormente' ? `cliente dormente · há ${a.diasAtraso} dia(s)`
+                  : a.movimentacao === 'atrasado' ? `atrasada há ${a.diasAtraso} dia(s)`
+                  : a.movimentacao === 'atencao' ? `próximo do prazo · faltam ${-a.diasAtraso} dia(s)`
+                  : 'dentro do prazo'}
               </p>
+              {a.ultimoPedido && (
+                <div className="mt-2 pt-2 border-t border-gray-200/60 space-y-0.5">
+                  <p className="text-[10px] text-gray-400">Prazo padrão: <span className="font-semibold text-gray-600">30 dias</span></p>
+                  <p className="text-[10px] text-gray-400">Último pedido: <span className="font-semibold text-gray-600 tabular-nums">{formatDate(a.ultimoPedido.toISOString().slice(0, 10))}</span></p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -686,8 +743,18 @@ export default function ClientesPage() {
   const [ufFilter, setUfFilter] = useState('');
   const [sort, setSort]         = useState<SortKey>('nome');
   const [selected, setSelected] = useState<ClienteCarteira | null>(null);
+  const [searchParams] = useSearchParams();
 
   const { data: clientes = [], isLoading } = useCarteira();
+
+  // Deep-link vindo de uma notificação de recompra: /clientes?cnpj=... abre o cliente.
+  const cnpjParam = searchParams.get('cnpj');
+  useEffect(() => {
+    if (!cnpjParam || clientes.length === 0) return;
+    const alvo = cnpjParam.replace(/\D/g, '');
+    const found = clientes.find(c => (c.cliente_cnpj ?? '').replace(/\D/g, '') === alvo);
+    if (found) setSelected(found);
+  }, [cnpjParam, clientes]);
 
   const ufsUnicas = useMemo(
     () => [...new Set(clientes.map(c => c.cliente_uf).filter(Boolean))].sort(),

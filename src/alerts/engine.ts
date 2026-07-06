@@ -122,57 +122,83 @@ function alertasOrcamentos({ orcamentos, hoje }: EngineInput): Alerta[] {
   return out;
 }
 
-// ─── Clientes: ultrapassaram a previsão média de recompra ───────────────────
+// ─── Clientes: ultrapassaram o prazo padrão de recompra (30 dias) ───────────
 export interface ClienteAtrasado {
   cliente: ClienteCarteira;
-  ciclo: number;        // dias (média entre compras)
+  ciclo: number | null;      // frequência média histórica (dias), se houver 3+ pedidos
   diasSemComprar: number;
+  diasAtraso: number;        // dias além do prazo padrão de 30 dias
+  proximaCompra: string;     // ISO — último pedido + 30 dias
+  bucket: string;            // janela de notificação (controle anti-spam)
 }
 
+const PRAZO_RECOMPRA = 30; // dias — prazo padrão fixo de recompra
+
+// Clientes que passaram do prazo padrão de 30 dias desde a última compra.
+// Regra FIXA (não usa mais o ciclo médio para decidir o atraso). O ciclo médio
+// segue apenas como informação de comportamento no card.
 export function clientesAtrasados(clientes: ClienteCarteira[], hoje: Date): ClienteAtrasado[] {
   const out: ClienteAtrasado[] = [];
   for (const c of clientes) {
-    // Ciclo médio requer histórico recorrente (3+ pedidos com datas válidas)
-    if (c.total_pedidos < 3 || !c.primeiro_pedido || !c.ultimo_pedido) continue;
-    const primeiro = parseISO(c.primeiro_pedido);
+    if (c.total_pedidos < 1 || !c.ultimo_pedido) continue; // sem pedidos → sem alerta
     const ultimo = parseISO(c.ultimo_pedido);
-    if (!primeiro || !ultimo || ultimo <= primeiro) continue;
-    const ciclo = (ultimo.getTime() - primeiro.getTime()) / DAY / (c.total_pedidos - 1);
-    if (ciclo < 5) continue; // compras no mesmo dia/semana não formam ciclo útil
+    if (!ultimo) continue;
     const diasSemComprar = diasDesde(c.ultimo_pedido, hoje);
-    if (diasSemComprar > ciclo * 1.25 && diasSemComprar - ciclo >= 7) {
-      out.push({ cliente: c, ciclo: Math.round(ciclo), diasSemComprar });
+    const diasAtraso = diasSemComprar - PRAZO_RECOMPRA;
+    if (diasAtraso <= 0) continue; // dentro do prazo de 30 dias
+    // Frequência média histórica (informativa) — requer 3+ pedidos com datas válidas
+    let ciclo: number | null = null;
+    const primeiro = parseISO(c.primeiro_pedido);
+    if (c.total_pedidos >= 3 && primeiro && ultimo > primeiro) {
+      const cc = (ultimo.getTime() - primeiro.getTime()) / DAY / (c.total_pedidos - 1);
+      if (cc >= 5) ciclo = Math.round(cc);
     }
+    const proximaCompra = new Date(ultimo.getTime() + PRAZO_RECOMPRA * DAY).toISOString().slice(0, 10);
+    // Janela anti-spam: entrada (1–6d), +7 (7–14d), +15 e depois no máx. 1x/semana.
+    // O id do alerta muda a cada janela → só re-notifica nesses marcos.
+    const bucket = diasAtraso < 7 ? 'm0' : diasAtraso < 15 ? 'm7' : `w${Math.floor((diasAtraso - 15) / 7)}`;
+    out.push({ cliente: c, ciclo, diasSemComprar, diasAtraso, proximaCompra, bucket });
   }
-  return out.sort((a, b) => b.diasSemComprar - a.diasSemComprar);
+  return out.sort((a, b) => b.diasAtraso - a.diasAtraso);
+}
+
+function fmtBR(iso: string | null | undefined): string {
+  const d = parseISO(iso ?? null);
+  return d ? d.toLocaleDateString('pt-BR') : '—';
 }
 
 function alertasRecompra(input: EngineInput): Alerta[] {
   const atrasados = clientesAtrasados(input.clientes, input.hoje);
   if (atrasados.length === 0) return [];
 
-  // Poucos → um card por cliente; muitos → agrupa em um único card
-  if (atrasados.length <= 2) {
-    return atrasados.map(a => ({
-      id: `recompra:${a.cliente.cliente_cnpj}:${a.cliente.ultimo_pedido}`,
-      tipo: 'cliente_recompra' as const,
-      prioridade: ALERT_DEFS.cliente_recompra.prioridade,
-      titulo: `${nomeCliente(a.cliente.cliente_nome, a.cliente.cliente_fantasia)} há ${a.diasSemComprar} dias sem pedidos`,
-      descricao: `A frequência média deste cliente é de ${a.ciclo} dias.`,
-      data: a.cliente.ultimo_pedido,
-      rota: '/clientes',
-      acao: 'Ver cliente',
-    }));
+  // Poucos → um card por cliente (id muda a cada janela → re-notifica só nos marcos)
+  if (atrasados.length <= 3) {
+    return atrasados.map(a => {
+      const nome = nomeCliente(a.cliente.cliente_nome, a.cliente.cliente_fantasia);
+      return {
+        id: `recompra:${a.cliente.cliente_cnpj}:${a.bucket}`,
+        tipo: 'cliente_recompra' as const,
+        prioridade: ALERT_DEFS.cliente_recompra.prioridade,
+        titulo: `${nome} com compra atrasada`,
+        descricao: `Ultrapassou o prazo padrão de recompra (30 dias). Último pedido ${fmtBR(a.cliente.ultimo_pedido)}, esperado ${fmtBR(a.proximaCompra)} — atrasado há ${a.diasAtraso} dia(s).`,
+        detalhe: a.ciclo ? `Frequência histórica: a cada ~${a.ciclo} dias.` : undefined,
+        data: a.cliente.ultimo_pedido,
+        rota: `/clientes?cnpj=${encodeURIComponent(a.cliente.cliente_cnpj)}`,
+        acao: 'Abrir cliente',
+      };
+    });
   }
-  const hojeStr = input.hoje.toISOString().slice(0, 10);
+  // Muitos → card agrupado, em janela SEMANAL para não repetir todo dia
+  const semana = Math.floor(input.hoje.getTime() / (7 * DAY));
   return [{
-    id: `recompra-grupo:${hojeStr}`,
+    id: `recompra-grupo:${semana}`,
     tipo: 'cliente_recompra',
     prioridade: ALERT_DEFS.cliente_recompra.prioridade,
-    titulo: `${atrasados.length} clientes ultrapassaram a previsão média de compra`,
+    titulo: `${atrasados.length} clientes com compra atrasada`,
     descricao: atrasados.slice(0, 3).map(a => nomeCliente(a.cliente.cliente_nome, a.cliente.cliente_fantasia)).join(', ')
       + (atrasados.length > 3 ? ` e mais ${atrasados.length - 3}` : ''),
-    data: hojeStr,
+    detalhe: 'Ultrapassaram o prazo padrão de 30 dias sem novo pedido.',
+    data: input.hoje.toISOString().slice(0, 10),
     rota: '/clientes',
     acao: 'Ver carteira',
     agrupado: atrasados.length,

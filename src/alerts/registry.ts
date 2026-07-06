@@ -40,7 +40,7 @@ export const ALERT_DEFS: Record<AlertTipo, AlertDef> = {
   orcamento_recusado:  { label: 'Orçamento recusado',    descricao: 'Quando um orçamento seu é recusado',                 icon: XCircle,       prioridade: 'alta',    som: 'erro' },
   orcamento_parado:    { label: 'Orçamento aguardando',  descricao: 'Aguardando aprovação há mais de 30 dias',            icon: Hourglass,     prioridade: 'critica', som: 'atencao' },
   orcamento_expirando: { label: 'Orçamento expirando',   descricao: 'Validade da proposta próxima do fim',                icon: CalendarClock, prioridade: 'critica', som: 'atencao' },
-  cliente_recompra:    { label: 'Cliente sem comprar',   descricao: 'Cliente ultrapassou a frequência média de compra',   icon: UserX,         prioridade: 'critica', som: 'atencao' },
+  cliente_recompra:    { label: 'Cliente sem comprar',   descricao: 'Cliente ultrapassou o prazo padrão de recompra (30 dias)', icon: UserX,     prioridade: 'critica', som: 'atencao' },
   pedido_faturado:     { label: 'Pedido faturado',       descricao: 'Pedido com NF e boleto disponíveis',                 icon: Truck,         prioridade: 'critica', som: 'sucesso' },
   nf_disponivel:       { label: 'Nota Fiscal',           descricao: 'Nova nota fiscal disponível para download',          icon: FileText,      prioridade: 'media',   som: null },
   boleto_disponivel:   { label: 'Boleto',                descricao: 'Novo boleto disponível para download',               icon: Receipt,       prioridade: 'media',   som: null },
