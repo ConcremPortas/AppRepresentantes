@@ -6,7 +6,7 @@ import SearchInput from '@/components/ui/SearchInput';
 import Pagination from '@/components/ui/Pagination';
 import PageContainer from '@/components/ui/PageContainer';
 import Avatar from '@/components/ui/Avatar';
-import { EntityCard } from '@/components/ui/cards';
+import { EntityCard, ProgressSteps, type ProgressStep } from '@/components/ui/cards';
 import { useIsDesktop } from '@/hooks/useMediaQuery';
 import {
   Plus, FileText, Clock, CheckCircle, XCircle, Send, RotateCcw, Pencil, Trash2,
@@ -31,6 +31,16 @@ const STATUS_CONFIG: Record<OrcamentoStatusReal, {
   aprovado:   { label: 'Aprovado',   bg: 'bg-green-50', text: 'text-green-700', icon: CheckCircle, accent: '#22c55e' },
   rejeitado:  { label: 'Rejeitado',  bg: 'bg-red-50',   text: 'text-red-700',   icon: XCircle,     accent: '#ef4444' },
 };
+
+// Jornada do orçamento (ciclo de status) — mesmo padrão de "steps" da referência.
+// Rejeitado é estado terminal (mostra o motivo, sem barra de etapas).
+const QUOTE_STEPS: ProgressStep[] = [
+  { key: 'rascunho',   label: 'Rascunho',   color: STATUS_CONFIG.rascunho.accent,   icon: FileText },
+  { key: 'enviado',    label: 'Enviado',    color: STATUS_CONFIG.enviado.accent,    icon: Send },
+  { key: 'em_analise', label: 'Em análise', color: STATUS_CONFIG.em_analise.accent, icon: Clock },
+  { key: 'aprovado',   label: 'Aprovado',   color: STATUS_CONFIG.aprovado.accent,   icon: CheckCircle },
+];
+const QUOTE_STEP_IDX: Record<string, number> = { rascunho: 0, enviado: 1, em_analise: 2, aprovado: 3 };
 
 const STATUSES = Object.keys(STATUS_CONFIG) as OrcamentoStatusReal[];
 const PAGE_SIZE = 9;
@@ -132,18 +142,19 @@ function QuoteCard({ orc, a, index }: { orc: Orcamento; a: QuoteActions; index: 
           <div className="ml-auto"><QuickActions orc={orc} a={a} compact /></div>
         </div>
 
-        {/* Cliente + obra */}
-        <p className="font-semibold text-gray-900 text-[15px] mt-2 leading-snug line-clamp-2">{nomeCliente(orc)}</p>
-        {orc.obra_referencia && (
-          <p className="text-xs text-gray-400 mt-0.5 truncate">Obra: {orc.obra_referencia}</p>
-        )}
+        {/* Cliente + obra + valor em destaque */}
+        <div className="flex items-start justify-between gap-2 mt-2">
+          <div className="min-w-0">
+            <p className="font-semibold text-gray-900 text-[15px] leading-snug line-clamp-2">{nomeCliente(orc)}</p>
+            {orc.obra_referencia && <p className="text-xs text-gray-400 mt-0.5 truncate">Obra: {orc.obra_referencia}</p>}
+          </div>
+          <p className={cn('font-bold text-base tabular-nums flex-shrink-0', valor > 0 ? 'text-gray-900' : 'text-gray-300')}>
+            {valor > 0 ? formatCurrencyK(valor) : '—'}
+          </p>
+        </div>
 
         {/* Métricas */}
         <div className="flex flex-wrap items-center gap-2 mt-3">
-          <span className="inline-flex items-center gap-1.5 rounded-lg bg-gray-50 px-2 py-1 text-xs font-semibold tabular-nums text-emerald-700">
-            <DollarSign className="w-3.5 h-3.5 text-emerald-500" />
-            {valor > 0 ? formatCurrencyK(valor) : '—'}
-          </span>
           <button
             type="button"
             onClick={() => setExpanded(v => !v)}
@@ -157,7 +168,7 @@ function QuoteCard({ orc, a, index }: { orc: Orcamento; a: QuoteActions; index: 
           {orc.validade && (
             <span className="inline-flex items-center gap-1.5 rounded-lg bg-gray-50 px-2 py-1 text-xs font-medium tabular-nums text-blue-700">
               <CalendarClock className="w-3.5 h-3.5 text-blue-500" />
-              {formatDate(orc.validade)}
+              Val. {formatDate(orc.validade)}
             </span>
           )}
         </div>
@@ -204,6 +215,13 @@ function QuoteCard({ orc, a, index }: { orc: Orcamento; a: QuoteActions; index: 
           </div>
         )}
       </div>
+
+      {/* Jornada do orçamento (etapas do status) */}
+      {orc.status !== 'rejeitado' && (
+        <div className="px-4 pb-3 pt-1">
+          <ProgressSteps steps={QUOTE_STEPS} currentIndex={QUOTE_STEP_IDX[orc.status] ?? 0} />
+        </div>
+      )}
 
       {/* Rodapé: autor + data */}
       <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-gray-50/60 border-t border-gray-100">
