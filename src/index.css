@@ -141,6 +141,10 @@ html {
   0%, 100% { transform: translate(0, 0); }
   50%      { transform: translate(-25px, 20px); }
 }
+/* Linhas geométricas da marca fluindo lentamente (fundo do login) */
+@keyframes loginLineFlow { to { stroke-dashoffset: -800; } }
+.login-line { animation: loginLineFlow linear infinite; }
+@media (prefers-reduced-motion: reduce) { .login-line { animation: none; } }
 
 /* Animações decorativas + entrada só quando o usuário não pediu redução de movimento.
    Sem elas, o gradiente estático (via inline style) e o conteúdo aparecem normalmente. */

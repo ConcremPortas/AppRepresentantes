@@ -116,13 +116,27 @@ export default function LoginPage() {
             </motion.p>
           </motion.div>
 
-          {/* ── Painel de glass (flutuante) ── */}
+          {/* ── Painel de glass (flutuante, respira) ── */}
           <motion.div
-            initial={reduce ? { opacity: 0 } : { opacity: 0, y: 26, scale: 0.97, filter: 'blur(10px)' }}
-            animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-            transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
-            className="rounded-[28px] border border-white/[0.08] bg-white/[0.04] backdrop-blur-2xl shadow-[0_30px_80px_-20px_rgba(0,0,0,0.7)] p-6 sm:p-8"
+            animate={reduce ? undefined : { y: [0, -6, 0] }}
+            transition={reduce ? undefined : { duration: 7, repeat: Infinity, ease: 'easeInOut' }}
+            className="relative"
           >
+            {/* Halo animado atrás do card */}
+            {!reduce && (
+              <motion.div
+                aria-hidden
+                className="pointer-events-none absolute -inset-4 rounded-[36px] bg-emerald-500/10 blur-2xl"
+                animate={{ opacity: [0.45, 0.9, 0.45] }}
+                transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+              />
+            )}
+            <motion.div
+              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 26, scale: 0.97, filter: 'blur(10px)' }}
+              animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+              transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
+              className="relative rounded-[28px] border border-white/[0.1] bg-white/[0.05] backdrop-blur-2xl shadow-[0_30px_80px_-20px_rgba(0,0,0,0.7)] p-6 sm:p-8"
+            >
             <motion.form
               onSubmit={handleSubmit}
               variants={stagger}
@@ -214,6 +228,7 @@ export default function LoginPage() {
 
               <PremiumButton loading={loading} disabled={loading || !turnstileToken} reduce={reduce} />
             </motion.form>
+            </motion.div>
           </motion.div>
 
           {/* ── Rodapé ── */}
