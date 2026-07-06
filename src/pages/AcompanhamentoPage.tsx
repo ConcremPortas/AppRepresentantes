@@ -640,7 +640,7 @@ export default function AcompanhamentoPage() {
   ];
   const VIEWS: { key: ViewMode; icon: React.ElementType; label: string }[] = [
     { key: 'lista', icon: LayoutList, label: 'Lista' },
-    { key: 'pipeline', icon: SquareKanban, label: 'Pipeline' },
+    { key: 'pipeline', icon: SquareKanban, label: 'Kanban' },
     { key: 'timeline', icon: Activity, label: 'Timeline' },
   ];
 

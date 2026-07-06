@@ -658,7 +658,7 @@ export default function PedidosPage() {
   const VIEWS: { key: ViewMode; icon: React.ElementType; label: string }[] = [
     { key: 'cards', icon: LayoutGrid, label: 'Cards' },
     { key: 'table', icon: List, label: 'Tabela' },
-    { key: 'pipeline', icon: SquareKanban, label: 'Pipeline' },
+    { key: 'pipeline', icon: SquareKanban, label: 'Kanban' },
   ];
 
   return (
