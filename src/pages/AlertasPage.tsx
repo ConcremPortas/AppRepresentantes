@@ -144,7 +144,13 @@ function AlertaCard({ alerta, lida, onLer, onExcluir, onAcao, index }: {
                 <button
                   type="button"
                   onClick={onAcao}
-                  className="h-7 px-2.5 rounded-lg text-[11px] font-semibold text-[hsl(142,93%,8%)] bg-[hsl(142,93%,8%)]/8 hover:bg-[hsl(142,93%,8%)]/15 active:scale-95 transition-all flex items-center gap-1 whitespace-nowrap"
+                  className={cn(
+                    'h-7 px-2.5 rounded-lg text-[11px] font-semibold active:scale-95 transition-all flex items-center gap-1 whitespace-nowrap',
+                    // Não lido → CTA verde sólido (padrão da referência); lido → tom discreto
+                    lida
+                      ? 'text-[hsl(142,93%,8%)] bg-[hsl(142,93%,8%)]/8 hover:bg-[hsl(142,93%,8%)]/15'
+                      : 'text-white bg-[hsl(142,93%,8%)] hover:brightness-125',
+                  )}
                 >
                   {alerta.acao}
                   <ChevronRight className="w-3 h-3" />
