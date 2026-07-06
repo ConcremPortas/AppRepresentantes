@@ -77,7 +77,7 @@ interface ClienteAnalytics {
     cicloDias: number | null;         // frequência real (intervalo médio) em dias
     historicoInsuficiente: boolean;   // < 2 compras → não dá p/ calcular frequência
   };
-  topProduto: { nome: string; qtd: number; pctPedidos: number } | null;
+  topProduto: { nome: string; qtd: number; valor: number; pctPedidos: number } | null;
   mixProdutos: { name: string; value: number }[];
   recentes: ClientePedido[];
   tendencia: number | null;          // % últimos 3m vs 3m anteriores
@@ -181,15 +181,21 @@ function computeAnalytics(pedidos: ClientePedido[], today: Date): ClienteAnalyti
       if (!vistos.has(nome)) { vistos.add(nome); pedidosComProduto.set(nome, (pedidosComProduto.get(nome) ?? 0) + 1); }
     }
   }
+  // Produto Mais Comprado → por QUANTIDADE (desempate por valor total)
   let topProduto: ClienteAnalytics['topProduto'] = null;
   if (qtdPorProduto.size > 0) {
-    const [nome, qtd] = [...qtdPorProduto.entries()].sort((a, b) => b[1] - a[1])[0];
+    const [nome, qtd] = [...qtdPorProduto.entries()].sort((a, b) =>
+      b[1] - a[1] || (valorPorProduto.get(b[0]) ?? 0) - (valorPorProduto.get(a[0]) ?? 0)
+    )[0];
     topProduto = {
       nome, qtd,
+      valor: valorPorProduto.get(nome) ?? 0,
       pctPedidos: totalPedidos > 0 ? Math.round(((pedidosComProduto.get(nome) ?? 0) / totalPedidos) * 100) : 0,
     };
   }
-  const mixArr = [...valorPorProduto.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  // Mix de Produtos → por VALOR (desempate por quantidade)
+  const mixArr = [...valorPorProduto.entries()].map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value || (qtdPorProduto.get(b.name) ?? 0) - (qtdPorProduto.get(a.name) ?? 0));
   const mixTop = mixArr.slice(0, 5);
   const resto = mixArr.slice(5).reduce((s, x) => s + x.value, 0);
   if (resto > 0) mixTop.push({ name: 'Outros', value: resto });
@@ -284,15 +290,18 @@ function InsightCard({ tone, title, text }: { tone: InsightTone; title: string; 
   );
 }
 
-function PanelCard({ title, icon: Icon, children, badge }: {
-  title: string; icon?: React.ElementType; children: React.ReactNode; badge?: string;
+function PanelCard({ title, icon: Icon, children, badge, subtitle, badgeTone }: {
+  title: string; icon?: React.ElementType; children: React.ReactNode; badge?: string; subtitle?: string; badgeTone?: string;
 }) {
   return (
     <div className="rounded-2xl bg-white border border-gray-200/70 shadow-sm min-w-0 overflow-hidden">
-      <div className="flex items-center gap-2 px-4 pt-4 pb-1">
-        {Icon && <Icon className="w-4 h-4 text-gray-400" />}
-        <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-        {badge && <span className="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{badge}</span>}
+      <div className="px-4 pt-4 pb-1">
+        <div className="flex items-center gap-2">
+          {Icon && <Icon className="w-4 h-4 text-gray-400" />}
+          <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+          {badge && <span className={`text-[10px] px-2 py-0.5 rounded-full ${badgeTone ?? 'text-gray-400 bg-gray-100'}`}>{badge}</span>}
+        </div>
+        {subtitle && <p className="text-[11px] text-gray-400 mt-0.5">{subtitle}</p>}
       </div>
       <div className="p-4 pt-3 min-w-0">{children}</div>
     </div>
@@ -453,8 +462,15 @@ function ClienteIntel({ cliente, onBack }: { cliente: ClienteCarteira; onBack: (
         ? { tone: 'good', title: 'Volume em crescimento', text: `Compras cresceram ${a.tendencia.toFixed(0)}% no último trimestre vs o anterior.` }
         : { tone: 'risk', title: 'Volume em queda', text: `Compras caíram ${Math.abs(a.tendencia).toFixed(0)}% no último trimestre vs o anterior.` });
     }
-    if (a.topProduto && a.topProduto.pctPedidos >= 60) {
-      list.push({ tone: 'opp', title: 'Oportunidade de mix', text: `"${a.topProduto.nome}" aparece em ${a.topProduto.pctPedidos}% dos pedidos. Oportunidade de apresentar linhas complementares.` });
+    const topValor = a.mixProdutos.find(m => m.name !== 'Outros') ?? null;
+    if (a.topProduto && topValor) {
+      if (a.topProduto.nome === topValor.name) {
+        list.push({ tone: 'good', title: 'Produto-chave',
+          text: `Produto favorito por quantidade: "${a.topProduto.nome}", com ${a.topProduto.qtd.toLocaleString('pt-BR')} unidades. Lidera tanto em quantidade quanto em faturamento (${fmtCompact(topValor.value)}).` });
+      } else {
+        list.push({ tone: 'opp', title: 'Quantidade × faturamento',
+          text: `O mais comprado em unidades é "${a.topProduto.nome}" (${a.topProduto.qtd.toLocaleString('pt-BR')} un.), enquanto o de maior participação no faturamento é "${topValor.name}" (${fmtCompact(topValor.value)}).` });
+      }
     } else if (a.mixProdutos.length >= 4) {
       list.push({ tone: 'good', title: 'Mix diversificado', text: `Cliente compra ${a.mixProdutos.length}+ linhas de produto — relacionamento saudável.` });
     }
@@ -610,17 +626,19 @@ function ClienteIntel({ cliente, onBack }: { cliente: ClienteCarteira; onBack: (
               </PanelCard>
             </div>
 
-            <PanelCard title="Mix de Produtos" icon={Package}>
+            <PanelCard title="Mix de Produtos" icon={DollarSign} badge="por valor" badgeTone="text-blue-700 bg-blue-50" subtitle="Baseado no valor total comprado (R$)">
               {a.mixProdutos.length === 0 ? (
-                <p className="text-sm text-gray-400 py-10 text-center">Sem itens registrados</p>
-              ) : (
+                <p className="text-sm text-gray-400 py-10 text-center">Sem histórico suficiente para calcular o mix por valor.</p>
+              ) : (() => {
+                const mixTotal = a.mixProdutos.reduce((s, d) => s + d.value, 0) || 1;
+                return (
                 <>
                   <ResponsiveContainer width="100%" height={140}>
                     <PieChart>
                       <Pie data={a.mixProdutos} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={40} outerRadius={62} paddingAngle={2} stroke="none">
                         {a.mixProdutos.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                       </Pie>
-                      <Tooltip formatter={(v, n) => [formatCurrency(Number(v)), n as string]}
+                      <Tooltip formatter={(v, n) => [`${formatCurrency(Number(v))} · ${Math.round(Number(v) / mixTotal * 100)}% do faturamento`, n as string]}
                         contentStyle={{ fontSize: 11, borderRadius: 10, border: '1px solid #e5e7eb', maxWidth: 260 }} />
                     </PieChart>
                   </ResponsiveContainer>
@@ -630,24 +648,29 @@ function ClienteIntel({ cliente, onBack }: { cliente: ClienteCarteira; onBack: (
                         <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
                         <span className="truncate flex-1">{d.name}</span>
                         <span className="font-semibold text-gray-700 tabular-nums flex-shrink-0">{fmtCompact(d.value)}</span>
+                        <span className="text-gray-400 tabular-nums flex-shrink-0 w-9 text-right">{Math.round(d.value / mixTotal * 100)}%</span>
                       </div>
                     ))}
                   </div>
+                  <p className="text-[10px] text-gray-400 mt-2.5 pt-2 border-t border-gray-100 leading-snug">
+                    Calculado pelo <span className="font-medium text-gray-500">valor total comprado</span> em cada produto — participação no faturamento do cliente.
+                  </p>
                 </>
-              )}
+                );
+              })()}
             </PanelCard>
           </div>
 
           {/* ── Produto destaque + Frequência de compra ── */}
           <div className="grid xl:grid-cols-3 gap-3">
-            <PanelCard title="Produto Mais Comprado" icon={Package}>
+            <PanelCard title="Produto Mais Comprado" icon={Package} badge="por quantidade" badgeTone="text-emerald-700 bg-emerald-50" subtitle="Baseado na quantidade total de unidades compradas">
               {a.topProduto ? (
                 <div>
                   <p className="text-sm font-semibold text-gray-900 leading-snug line-clamp-3">{a.topProduto.nome}</p>
-                  <div className="flex items-center gap-4 mt-3">
+                  <div className="flex items-end gap-5 mt-3">
                     <div>
-                      <p className="text-xl font-bold text-[hsl(142,93%,8%)] tabular-nums leading-none">{a.topProduto.qtd.toLocaleString('pt-BR')}</p>
-                      <p className="text-[10px] text-gray-400 mt-1">unidades</p>
+                      <p className="text-2xl font-bold text-[hsl(142,93%,8%)] tabular-nums leading-none">{a.topProduto.qtd.toLocaleString('pt-BR')}</p>
+                      <p className="text-[10px] text-gray-400 mt-1">unidades compradas</p>
                     </div>
                     <div>
                       <p className="text-xl font-bold text-gray-900 tabular-nums leading-none">{a.topProduto.pctPedidos}%</p>
@@ -657,9 +680,12 @@ function ClienteIntel({ cliente, onBack }: { cliente: ClienteCarteira; onBack: (
                   <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden mt-3">
                     <div className="h-full rounded-full bg-[hsl(142,93%,8%)] transition-all duration-700" style={{ width: `${a.topProduto.pctPedidos}%` }} />
                   </div>
+                  <p className="text-[10px] text-gray-400 mt-2.5 pt-2 border-t border-gray-100 leading-snug">
+                    Definido pela <span className="font-medium text-gray-500">maior quantidade de unidades</span> compradas — independe do valor em R$.
+                  </p>
                 </div>
               ) : (
-                <p className="text-sm text-gray-400 py-6 text-center">Sem itens registrados</p>
+                <p className="text-sm text-gray-400 py-6 text-center">Sem histórico suficiente para calcular o produto favorito.</p>
               )}
             </PanelCard>
 
