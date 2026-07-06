@@ -10,6 +10,7 @@ import { parseDadosTabela } from '@/services/pedidosVenda';
 import type { ClienteCarteira, ClientePedido } from '@/services/carteira';
 import {
   AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  ComposedChart, Bar, Line, ReferenceLine,
 } from 'recharts';
 import {
   MapPin, Phone, Mail, ShoppingCart, DollarSign, Calendar,
@@ -62,6 +63,14 @@ interface ClienteAnalytics {
   diasAtraso: number;                // > 0 = atrasado
   serieMensal: { mes: string; valor: number }[];
   freqMensal: { mes: string; count: number }[];
+  freqStats: {
+    media: number; total: number; mesesAtivos: number;
+    pico: { mes: string; count: number } | null;
+    maxConsecutivos: number; slope: number;
+    constancia: 'alta' | 'média' | 'baixa';
+    comportamento: string;
+    chart: { mes: string; count: number; trend: number }[];
+  };
   topProduto: { nome: string; qtd: number; pctPedidos: number } | null;
   mixProdutos: { name: string; value: number }[];
   recentes: ClientePedido[];
@@ -105,6 +114,37 @@ function computeAnalytics(pedidos: ClientePedido[], today: Date): ClienteAnalyti
     freqMensal.push({ mes: label, count: doMes.length });
   }
 
+  // ── Frequência de compra (12 meses): estatísticas + tendência ──
+  const freqCounts = freqMensal.map(m => m.count);
+  const freqTotal = freqCounts.reduce((s, c) => s + c, 0);
+  const freqMedia = freqTotal / 12;
+  const mesesAtivos = freqCounts.filter(c => c > 0).length;
+  const maxCount = Math.max(0, ...freqCounts);
+  const picoIdx = maxCount > 0 ? freqCounts.indexOf(maxCount) : -1;
+  const picoFreq = picoIdx >= 0 ? { mes: freqMensal[picoIdx].mes, count: maxCount } : null;
+  let streak = 0, maxStreak = 0;
+  for (const c of freqCounts) { if (c > 0) { streak++; if (streak > maxStreak) maxStreak = streak; } else streak = 0; }
+  // Regressão linear simples sobre as 12 contagens → linha de tendência
+  const nF = freqCounts.length;
+  const sumX = (nF - 1) * nF / 2;
+  const sumXX = freqCounts.reduce((s, _c, i) => s + i * i, 0);
+  const sumXY = freqCounts.reduce((s, c, i) => s + i * c, 0);
+  const denom = nF * sumXX - sumX * sumX;
+  const slopeF = denom !== 0 ? (nF * sumXY - sumX * freqTotal) / denom : 0;
+  const interceptF = (freqTotal - slopeF * sumX) / nF;
+  const freqChart = freqMensal.map((m, i) => ({ ...m, trend: Math.max(0, interceptF + slopeF * i) }));
+  const ratioAtivos = mesesAtivos / 12;
+  const constancia: 'alta' | 'média' | 'baixa' = ratioAtivos >= 0.6 ? 'alta' : ratioAtivos >= 0.33 ? 'média' : 'baixa';
+  const comportamento = freqTotal === 0
+    ? 'Sem compras no período'
+    : constancia === 'alta' ? 'Frequência regular'
+    : constancia === 'média' ? 'Frequência sazonal'
+    : 'Frequência irregular';
+  const freqStats: ClienteAnalytics['freqStats'] = {
+    media: freqMedia, total: freqTotal, mesesAtivos, pico: picoFreq,
+    maxConsecutivos: maxStreak, slope: slopeF, constancia, comportamento, chart: freqChart,
+  };
+
   // Tendência: últimos 3 meses vs 3 anteriores
   const ult3 = serieMensal.slice(9).reduce((s, m) => s + m.valor, 0);
   const ant3 = serieMensal.slice(6, 9).reduce((s, m) => s + m.valor, 0);
@@ -144,7 +184,7 @@ function computeAnalytics(pedidos: ClientePedido[], today: Date): ClienteAnalyti
 
   return {
     totalPedidos, receita, ticketMedio, ultimoPedido, intervaloMedio, proximaCompra,
-    diasAtraso, serieMensal, freqMensal, topProduto, mixProdutos: mixTop, recentes, tendencia,
+    diasAtraso, serieMensal, freqMensal, freqStats, topProduto, mixProdutos: mixTop, recentes, tendencia,
   };
 }
 
@@ -231,6 +271,107 @@ function PanelCard({ title, icon: Icon, children, badge }: {
       </div>
       <div className="p-4 pt-3 min-w-0">{children}</div>
     </div>
+  );
+}
+
+// ─── Frequência de Compra (12 meses) — gráfico premium ────
+function FreqStat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: string }) {
+  return (
+    <div className="rounded-xl bg-gray-50 border border-gray-100 px-2.5 py-2 text-center min-w-0">
+      <p className={`text-lg font-bold tabular-nums leading-none ${tone ?? 'text-gray-900'}`}>{value}</p>
+      <p className="text-[10px] text-gray-400 mt-1 truncate">{sub ? `${label} · ${sub}` : label}</p>
+    </div>
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function FreqTooltip({ active, payload, label, media }: any) {
+  if (!active || !payload?.length) return null;
+  const count = payload.find((p: { dataKey?: string }) => p.dataKey === 'count')?.value ?? 0;
+  const diff = count - media;
+  const rel = Math.abs(diff) < 0.25 ? 'na média mensal' : diff > 0 ? `+${diff.toFixed(1)} acima da média` : `${diff.toFixed(1)} abaixo da média`;
+  const relColor = Math.abs(diff) < 0.25 ? 'text-gray-400' : diff > 0 ? 'text-emerald-600' : 'text-gray-400';
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white shadow-lg px-3 py-2">
+      <p className="text-xs font-semibold text-gray-900">{label}</p>
+      <p className="text-xs text-gray-600 tabular-nums">{count} compra{count === 1 ? '' : 's'}</p>
+      <p className={`text-[11px] tabular-nums ${relColor}`}>{rel}</p>
+    </div>
+  );
+}
+
+function FrequenciaCompra({ stats, reduce }: { stats: ClienteAnalytics['freqStats']; reduce: boolean }) {
+  const { media, total, mesesAtivos, pico, constancia, comportamento, chart } = stats;
+  const maxCount = pico?.count ?? 0;
+  const cor = constancia === 'alta'
+    ? { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' }
+    : constancia === 'média'
+    ? { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' }
+    : { bg: 'bg-gray-100', text: 'text-gray-500', dot: 'bg-gray-400' };
+
+  if (total === 0) {
+    return (
+      <PanelCard title="Frequência de Compra" icon={Clock} badge="12 meses">
+        <p className="text-sm text-gray-400 py-10 text-center">Nenhuma compra registrada nos últimos 12 meses</p>
+      </PanelCard>
+    );
+  }
+
+  return (
+    <PanelCard title="Frequência de Compra" icon={Clock} badge="12 meses">
+      <div className="space-y-3">
+        {/* Mini-resumo */}
+        <div className="grid grid-cols-3 gap-2">
+          <FreqStat label="Média/mês" value={media.toFixed(1)} />
+          <FreqStat label="Pico" value={String(maxCount)} sub={pico?.mes} tone="text-[hsl(142,93%,8%)]" />
+          <FreqStat label="Meses ativos" value={`${mesesAtivos}/12`} />
+        </div>
+
+        {/* Gráfico */}
+        <ResponsiveContainer width="100%" height={180}>
+          <ComposedChart data={chart} margin={{ top: 12, right: 6, bottom: 0, left: -20 }}>
+            <defs>
+              <linearGradient id="freqBar" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#3ac47d" />
+                <stop offset="100%" stopColor="#2eaf69" stopOpacity={0.55} />
+              </linearGradient>
+              <linearGradient id="freqBarHi" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#12833f" />
+                <stop offset="100%" stopColor={CONCREM} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+            <XAxis dataKey="mes" interval={0} tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+            <YAxis allowDecimals={false} width={28} domain={[0, 'dataMax + 1']} tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+            <Tooltip cursor={{ fill: 'rgba(46,175,105,0.06)' }} content={<FreqTooltip media={media} />} />
+            <ReferenceLine y={media} stroke="#9ca3af" strokeDasharray="4 4" strokeWidth={1} ifOverflow="extendDomain" />
+            <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={34} background={{ fill: '#f3f4f6', radius: 6 }} isAnimationActive={!reduce} animationDuration={800}>
+              {chart.map((m, i) => (
+                <Cell key={i} fill={m.count === maxCount && m.count > 0 ? 'url(#freqBarHi)' : 'url(#freqBar)'} />
+              ))}
+            </Bar>
+            <Line type="monotone" dataKey="trend" stroke="#f59e0b" strokeWidth={1.75} dot={false} activeDot={false} opacity={0.75} isAnimationActive={!reduce} animationDuration={800} />
+          </ComposedChart>
+        </ResponsiveContainer>
+
+        {/* Legenda mínima */}
+        <div className="flex items-center justify-end gap-3 text-[9px] text-gray-400 -mt-1.5 pr-1">
+          <span className="flex items-center gap-1"><span className="inline-block w-3 border-t border-dashed border-gray-400" />média</span>
+          <span className="flex items-center gap-1"><span className="inline-block w-3 border-t-2 border-amber-400" />tendência</span>
+        </div>
+
+        {/* Insight */}
+        <div className={`rounded-xl px-3 py-2 ${cor.bg}`}>
+          <div className="flex items-center gap-1.5 mb-1">
+            <span className={`w-1.5 h-1.5 rounded-full ${cor.dot}`} />
+            <span className={`text-[10px] font-bold uppercase tracking-wide ${cor.text}`}>{comportamento}</span>
+          </div>
+          <p className="text-[11px] text-gray-500 leading-snug">
+            Maior recorrência em <span className="font-medium text-gray-700">{pico?.mes}</span> ({maxCount} compra{maxCount === 1 ? '' : 's'}). O cliente comprou em <span className="font-medium text-gray-700">{mesesAtivos}</span> dos últimos 12 meses.
+          </p>
+        </div>
+      </div>
+    </PanelCard>
   );
 }
 
@@ -466,23 +607,7 @@ function ClienteIntel({ cliente, onBack }: { cliente: ClienteCarteira; onBack: (
             </PanelCard>
 
             <div className="xl:col-span-2 min-w-0">
-              <PanelCard title="Frequência de Compra" icon={Clock} badge="12 meses">
-                <div className="flex items-end gap-1.5 h-24">
-                  {a.freqMensal.map((m, i) => {
-                    const max = Math.max(...a.freqMensal.map(x => x.count), 1);
-                    const h = m.count > 0 ? Math.max((m.count / max) * 100, 12) : 4;
-                    return (
-                      <div key={i} className="flex-1 flex flex-col items-center gap-1 min-w-0">
-                        <span className="text-[9px] text-gray-400 tabular-nums">{m.count > 0 ? m.count : ''}</span>
-                        <div className="w-full rounded-t-md transition-all duration-700"
-                          style={{ height: `${h}%`, backgroundColor: m.count > 0 ? '#2eaf69' : '#e5e7eb' }}
-                          title={`${m.mes}: ${m.count} pedido(s)`} />
-                        <span className="text-[9px] text-gray-400">{m.mes}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </PanelCard>
+              <FrequenciaCompra stats={a.freqStats} reduce={!!reduce} />
             </div>
           </div>
 
