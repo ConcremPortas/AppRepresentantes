@@ -27,7 +27,7 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
-export async function fetchPedidosComAnexos(): Promise<PedidoComAnexos[]> {
+export async function fetchPedidosComAnexos(grupos: string[] | null = null): Promise<PedidoComAnexos[]> {
   // 1. Anexos — a RLS já filtra pelos pedidos do representante logado
   const { data: anexos, error } = await supabase
     .from('relatorio_entrega_anexos')
@@ -51,11 +51,13 @@ export async function fetchPedidosComAnexos(): Promise<PedidoComAnexos[]> {
   const info = new Map<string, { cliente_nome: string; cliente_fantasia: string | null; data_emissao: string }>();
 
   for (const batch of chunk(numeros, 200)) {
-    const { data: pedidos } = await supabase
+    let pq = supabase
       .from('concrem_pedidos_venda')
       .select('numero_pedido, cliente_nome, cliente_fantasia, data_emissao')
       .in('numero_pedido', batch)
       .in('id_nota_conf', VALID_ID_NOTA_CONF);
+    if (grupos != null) pq = pq.in('grupo_cliente', grupos); // diretor: só seus grupos
+    const { data: pedidos } = await pq;
     for (const p of (pedidos ?? []) as { numero_pedido: string; cliente_nome: string; cliente_fantasia: string | null; data_emissao: string }[]) {
       info.set(p.numero_pedido, {
         cliente_nome: p.cliente_nome,

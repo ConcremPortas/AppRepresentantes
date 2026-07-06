@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useOrcamentos } from '@/hooks/useOrcamentos';
 import { useCarteira } from '@/hooks/useCarteira';
+import { useDataScope } from '@/hooks/useDataScope';
 import { fetchPedidosComAnexos } from '@/services/financeiro';
 import { fetchNotificacoes, marcarNotificacaoLida } from '@/services/notificacoes';
 import { gerarAlertas } from '@/alerts/engine';
@@ -26,6 +27,7 @@ export function useAlertas(opts: { notificar?: boolean } = {}) {
   const navigate = useNavigate();
   const isAdmin = user?.usuario?.admin ?? false;
   const uid = user?.usuario?.id ?? '';
+  const { grupos, scopeKey } = useDataScope(); // escopo do diretor (grupos)
 
   // Estado persistente (prefs/lidas/excluídas) — sincronizado entre componentes
   useEffect(() => { if (uid) alertStore.setUser(uid); }, [uid]);
@@ -35,8 +37,8 @@ export function useAlertas(opts: { notificar?: boolean } = {}) {
   const { data: orcamentos = [], isLoading: l1 } = useOrcamentos();
   const { data: clientes = [], isLoading: l2 } = useCarteira(isAdmin ? 'todos' : undefined);
   const { data: pedidosAnexos = [], isLoading: l3 } = useQuery({
-    queryKey: ['pedidos-anexos'],
-    queryFn: fetchPedidosComAnexos,
+    queryKey: ['pedidos-anexos', scopeKey],
+    queryFn: () => fetchPedidosComAnexos(grupos),
     enabled: !!user,
     staleTime: 1000 * 60 * 5,
   });

@@ -7,7 +7,7 @@ export function useFinanceiroAnexos() {
   const { user } = useAuth();
   return useQuery({
     queryKey: ['financeiro-anexos', user?.id],
-    queryFn: fetchPedidosComAnexos,
+    queryFn: () => fetchPedidosComAnexos(),
     enabled: !!user?.id,
   });
 }
