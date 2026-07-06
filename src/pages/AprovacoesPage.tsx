@@ -16,6 +16,7 @@ import {
   ComposedChart, Area, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 import { cn } from '@/utils/cn';
+import { MetricCard } from '@/components/ui/cards';
 import type { Orcamento, OrcamentoStatusReal } from '@/types';
 import { useOrcamentos } from '@/hooks/useOrcamentos';
 import { useAuth } from '@/hooks/useAuth';
@@ -127,19 +128,9 @@ function ToastStack({ toasts }: { toasts: ToastMsg[] }) {
 }
 
 // ─── KPI card ──────────────────────────────────────────────
-function KpiCard({ icon: Icon, label, value, sub, tone }: {
-  icon: React.ElementType; label: string; value: string; sub?: string; tone?: string;
-}) {
-  return (
-    <div className="rounded-2xl bg-white border border-gray-200/70 shadow-sm p-3.5 min-w-0 overflow-hidden transition-shadow hover:shadow-md">
-      <div className="flex items-center gap-1.5 text-gray-400 min-w-0">
-        <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-        <p className="text-[10px] font-semibold uppercase tracking-wider truncate">{label}</p>
-      </div>
-      <p className={cn('text-lg font-bold mt-1 tabular-nums leading-tight truncate', tone ?? 'text-gray-900')}>{value}</p>
-      {sub && <p className="text-[10px] text-gray-400 mt-0.5 truncate">{sub}</p>}
-    </div>
-  );
+// KpiCard usa o MetricCard compartilhado (variante grid) — mesma linguagem das demais telas.
+function KpiCard(props: { icon: React.ElementType; label: string; value: string; sub?: string; tone?: string }) {
+  return <MetricCard grid {...props} />;
 }
 
 // ─── Gráfico dinâmico de aprovações ────────────────────────

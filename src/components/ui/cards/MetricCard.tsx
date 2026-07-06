@@ -4,7 +4,7 @@ import { cn } from '@/utils/cn';
 // KPI/Métrica padrão do sistema — extraído do topo da Central de Pedidos.
 // ícone + label pequeno + valor grande + subtítulo opcional. Tom semântico no valor.
 export default function MetricCard({
-  icon: Icon, label, value, tone, sub, onClick, className,
+  icon: Icon, label, value, tone, sub, onClick, grid = false, className,
 }: {
   icon?: ElementType;
   label: string;
@@ -12,13 +12,15 @@ export default function MetricCard({
   tone?: string;       // classe de cor do valor (ex.: 'text-emerald-700')
   sub?: string;
   onClick?: () => void;
+  grid?: boolean;      // true = tile em grade (min-w-0); false = fileira rolável (min-w-[140px])
   className?: string;
 }) {
   return (
     <div
       onClick={onClick}
       className={cn(
-        'rounded-2xl bg-white border border-gray-200/70 shadow-sm p-3.5 min-w-[140px] sm:min-w-0 flex-shrink-0 sm:flex-shrink transition-shadow hover:shadow-md',
+        'rounded-2xl bg-white border border-gray-200/70 shadow-sm p-3.5 transition-shadow hover:shadow-md',
+        grid ? 'min-w-0 overflow-hidden' : 'min-w-[140px] sm:min-w-0 flex-shrink-0 sm:flex-shrink',
         onClick && 'cursor-pointer',
         className,
       )}
