@@ -87,18 +87,21 @@ function CriarModal({
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-1 block">Nome completo</label>
             <input value={nome} onChange={e => setNome(e.target.value)} placeholder="Lillian Silva"
+              name="nu-nome" autoComplete="off"
               className="w-full h-9 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[hsl(142,93%,8%)]" />
           </div>
 
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-1 block">E-mail</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="lillian@concrem.com.br"
+              name="nu-email" autoComplete="off"
               className="w-full h-9 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[hsl(142,93%,8%)]" />
           </div>
 
           <div>
             <label className="text-xs font-semibold text-gray-500 mb-1 block">Senha provisória</label>
             <input type="password" value={senha} onChange={e => setSenha(e.target.value)} placeholder="••••••••"
+              name="nu-senha" autoComplete="new-password"
               className="w-full h-9 px-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[hsl(142,93%,8%)]" />
           </div>
 
