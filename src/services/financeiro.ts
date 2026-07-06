@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client';
+import { VALID_ID_NOTA_CONF } from '@/constants/orderFilters';
 import { REP_EXCLUIDOS } from '@/services/pedidosVenda';
 
 // A tela Financeiro mostra os documentos (NF/boleto) de cada pedido.
@@ -53,7 +54,8 @@ export async function fetchPedidosComAnexos(): Promise<PedidoComAnexos[]> {
     const { data: pedidos } = await supabase
       .from('concrem_pedidos_venda')
       .select('numero_pedido, cliente_nome, cliente_fantasia, data_emissao')
-      .in('numero_pedido', batch);
+      .in('numero_pedido', batch)
+      .in('id_nota_conf', VALID_ID_NOTA_CONF);
     for (const p of (pedidos ?? []) as { numero_pedido: string; cliente_nome: string; cliente_fantasia: string | null; data_emissao: string }[]) {
       info.set(p.numero_pedido, {
         cliente_nome: p.cliente_nome,
@@ -64,6 +66,8 @@ export async function fetchPedidosComAnexos(): Promise<PedidoComAnexos[]> {
   }
 
   return numeros
+    // Só pedidos válidos (id_nota_conf permitido): descarta anexos de pedidos fora da regra
+    .filter(numero => info.has(numero))
     .map(numero => {
       const i = info.get(numero);
       return {
@@ -146,6 +150,7 @@ export async function fetchFinanceiro(params: FetchFinanceiroParams): Promise<Pe
       .from('concrem_pedidos_venda')
       .select('numero_pedido, cliente_nome, cliente_fantasia, cliente_cnpj, cliente_cidade, cliente_uf, data_emissao, situacao_entrega, representante, total_pedido_venda')
       .in('numero_pedido', batch)
+      .in('id_nota_conf', VALID_ID_NOTA_CONF)
       .not('representante', 'in', `(${REP_EXCLUIDOS.map(r => `"${r}"`).join(',')})`);
     if (!admin) q = q.in('representante', repCodes);
     const { data } = await q;

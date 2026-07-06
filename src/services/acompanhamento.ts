@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client';
+import { VALID_ID_NOTA_CONF } from '@/constants/orderFilters';
 import { REP_EXCLUIDOS } from '@/services/pedidosVenda';
 import type { PedidoStatus, PedidoAnexo } from '@/types';
 
@@ -68,6 +69,7 @@ export async function fetchAcompanhamento(
   let pedidosQuery = supabase
     .from('concrem_pedidos_venda')
     .select('id, numero_pedido, cliente_nome, cliente_fantasia, cliente_cnpj, cliente_cidade, cliente_uf, data_emissao, previsao_embarque, situacao_entrega, total_pedido_venda, representante')
+    .in('id_nota_conf', VALID_ID_NOTA_CONF)
     .order('data_emissao', { ascending: false });
 
   if (!admin && repCodes.length > 0) {

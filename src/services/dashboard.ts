@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client';
+import { VALID_ID_NOTA_CONF } from '@/constants/orderFilters';
 import { mapStatus } from '@/services/acompanhamento';
 import { REP_EXCLUIDOS } from '@/services/pedidosVenda';
 import type { PedidoStatus } from '@/types';
@@ -80,7 +81,8 @@ export async function fetchDashboardStats(
   // ── 1. Buscar pedidos do representante (id + valor + data) ──
   let pedidosQuery = supabase
     .from('concrem_pedidos_venda')
-    .select('id, numero_pedido, total_pedido_venda, data_emissao, representante');
+    .select('id, numero_pedido, total_pedido_venda, data_emissao, representante')
+    .in('id_nota_conf', VALID_ID_NOTA_CONF);
 
   if (!isAdmin && repCodes.length > 0) {
     pedidosQuery = pedidosQuery.in('representante', repCodes);

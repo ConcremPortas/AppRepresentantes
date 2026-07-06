@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client';
+import { VALID_ID_NOTA_CONF } from '@/constants/orderFilters';
 
 export interface ClienteCarteira {
   cliente_codigo: string;
@@ -42,6 +43,7 @@ export async function fetchCarteira(params: FetchCarteiraParams): Promise<Client
   let query = supabase
     .from('concrem_pedidos_venda')
     .select(CAMPOS)
+    .in('id_nota_conf', VALID_ID_NOTA_CONF)
     .limit(5000);
 
   if (!admin) {
@@ -114,6 +116,7 @@ export async function fetchClientePedidos(
   let query = supabase
     .from('concrem_pedidos_venda')
     .select('numero_pedido, data_emissao, total_pedido_venda, dados_tabela')
+    .in('id_nota_conf', VALID_ID_NOTA_CONF)
     .eq('cliente_cnpj', cnpj)
     .order('data_emissao', { ascending: true })
     .limit(1000);

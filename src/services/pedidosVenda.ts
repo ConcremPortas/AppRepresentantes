@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client';
+import { VALID_ID_NOTA_CONF } from '@/constants/orderFilters';
 import { mapStatus } from '@/services/acompanhamento';
 import type { PedidoVenda, PedidoDadosTabela, PedidoItemERP, PedidoAnexo } from '@/types';
 
@@ -76,6 +77,7 @@ export async function fetchPedidosVenda(params: FetchPedidosParams): Promise<Fet
   let query = supabase
     .from('concrem_pedidos_venda')
     .select('*', { count: 'exact' })
+    .in('id_nota_conf', VALID_ID_NOTA_CONF)
     .order('data_emissao', { ascending: false })
     .not('representante', 'in', `(${REP_EXCLUIDOS.map(r => `"${r}"`).join(',')})`)
     .range(from, to);
@@ -178,6 +180,7 @@ export async function fetchPedidosCompleto(params: FetchPedidosParams): Promise<
   let query = supabase
     .from('concrem_pedidos_venda')
     .select('*', { count: 'exact' })
+    .in('id_nota_conf', VALID_ID_NOTA_CONF)
     .order('data_emissao', { ascending: false })
     .not('representante', 'in', `(${REP_EXCLUIDOS.map(r => `"${r}"`).join(',')})`)
     .limit(CENTRAL_CAP);
@@ -210,6 +213,7 @@ export async function fetchSituacoesEntrega(): Promise<string[]> {
   const { data, error } = await supabase
     .from('concrem_pedidos_venda')
     .select('situacao_entrega')
+    .in('id_nota_conf', VALID_ID_NOTA_CONF)
     .not('situacao_entrega', 'is', null)
     .order('situacao_entrega');
 
@@ -222,6 +226,7 @@ export async function fetchRepresentantesUnicos(): Promise<string[]> {
   const { data, error } = await supabase
     .from('concrem_pedidos_venda')
     .select('representante')
+    .in('id_nota_conf', VALID_ID_NOTA_CONF)
     .not('representante', 'is', null)
     .not('representante', 'in', `(${REP_EXCLUIDOS.map(r => `"${r}"`).join(',')})`)
     .order('representante');
