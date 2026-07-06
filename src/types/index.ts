@@ -1,5 +1,9 @@
 // ─── MODELO REAL DO BANCO ────────────────────────────────────────────────────
 
+/** Perfil (role única) — coluna `perfil` em concremapprep_usuarios.
+ *  admin/diretor_geral = visão global; diretor = escopo por grupos de cliente. */
+export type Perfil = 'representante' | 'operador' | 'admin' | 'diretor' | 'diretor_geral';
+
 /** Usuário do portal (pessoa real — um por login) */
 export interface Usuario {
   id: string;         // = auth.users.id
@@ -9,8 +13,16 @@ export interface Usuario {
   avatar_url?: string | null;  // URL pública da foto no bucket 'avatars'
   admin: boolean;
   operador: boolean;
+  perfil?: Perfil | null;      // role única (fonte de verdade; fallback nos flags)
   ativo: boolean;
   created_at: string;
+}
+
+/** Grupo de cliente (tabela client_groups) — eixo de escopo do Diretor. */
+export interface ClientGroup {
+  id: string;
+  name: string;
+  is_active: boolean;
 }
 
 /** Código de representante no ERP.
@@ -359,4 +371,5 @@ export interface User {
   representante?: Representante;   // mock
   usuario?: Usuario;               // real (Supabase)
   repCodes?: RepresentanteERP[];   // rep codes do ERP vinculados
+  grupos?: string[];               // nomes dos grupos vinculados (perfil Diretor)
 }
