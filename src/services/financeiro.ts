@@ -101,14 +101,14 @@ export interface PedidoFinanceiro {
   anexos: AnexoItem[];
 }
 
-export interface FetchFinanceiroParams { repCodes?: string[]; admin?: boolean; }
+export interface FetchFinanceiroParams { repCodes?: string[]; admin?: boolean; grupos?: string[] | null; }
 
 // Valores brutos do ERP que indicam "faturado ou além"
 const FATURADO_RAW = ['faturado', 'em_entrega', 'entregue', 'finalizado'];
 
 export async function fetchFinanceiro(params: FetchFinanceiroParams): Promise<PedidoFinanceiro[]> {
-  const { repCodes = [], admin = false } = params;
-  if (!admin && repCodes.length === 0) return [];
+  const { repCodes = [], admin = false, grupos = null } = params;
+  if (grupos == null && !admin && repCodes.length === 0) return [];
 
   // 1. Anexos (RLS já filtra por representante)
   const { data: anexos, error: anexosErr } = await supabase
@@ -152,7 +152,8 @@ export async function fetchFinanceiro(params: FetchFinanceiroParams): Promise<Pe
       .in('numero_pedido', batch)
       .in('id_nota_conf', VALID_ID_NOTA_CONF)
       .not('representante', 'in', `(${REP_EXCLUIDOS.map(r => `"${r}"`).join(',')})`);
-    if (!admin) q = q.in('representante', repCodes);
+    if (grupos != null) q = q.in('grupo_cliente', grupos);
+    else if (!admin) q = q.in('representante', repCodes);
     const { data } = await q;
     for (const row of (data ?? []) as Info[]) info.set(row.numero_pedido, row);
   }

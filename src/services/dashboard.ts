@@ -73,6 +73,7 @@ export async function fetchDashboardStats(
   repCodes: string[],
   isAdmin: boolean,
   filtros: DashboardFiltros = {},
+  grupos: string[] | null = null,
 ): Promise<DashboardStats> {
   const periodo = filtros.periodo ?? 'mes';
   const now   = new Date();
@@ -84,7 +85,9 @@ export async function fetchDashboardStats(
     .select('id, numero_pedido, total_pedido_venda, data_emissao, representante')
     .in('id_nota_conf', VALID_ID_NOTA_CONF);
 
-  if (!isAdmin && repCodes.length > 0) {
+  if (grupos != null) {
+    pedidosQuery = pedidosQuery.in('grupo_cliente', grupos);
+  } else if (!isAdmin && repCodes.length > 0) {
     pedidosQuery = pedidosQuery.in('representante', repCodes);
   }
   // Filtro por representante específico (usado pelo admin)

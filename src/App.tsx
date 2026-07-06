@@ -1,6 +1,7 @@
 import { MemoryRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { perfilDoUsuario, isGlobal } from '@/constants/perfis';
 import LoginPage from '@/pages/LoginPage';
 import DashboardPage from '@/pages/DashboardPage';
 import OrcamentosPage from '@/pages/OrcamentosPage';
@@ -26,26 +27,26 @@ const queryClient = new QueryClient({
   },
 });
 
-// ─── Guard: só admins ────────────────────────────────────
+// ─── Guard: visão global (admin ou diretor geral) ────────
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  if (!user?.usuario?.admin) return <Navigate to="/dashboard" replace />;
+  if (!isGlobal(perfilDoUsuario(user?.usuario))) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
-// ─── Guard: operadores e admins (página de aprovações) ───
+// ─── Guard: aprovações (operador, admin, diretor, diretor geral) ───
 function OperadorRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const ok = user?.usuario?.admin || user?.usuario?.operador;
+  const p = perfilDoUsuario(user?.usuario);
+  const ok = isGlobal(p) || p === 'operador' || p === 'diretor';
   if (!ok) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
-// ─── Guard: representantes (não acessível para operador puro) ─
+// ─── Guard: telas operacionais (bloqueia apenas operador puro) ─
 function RepRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const isOperadorOnly = user?.usuario?.operador && !user?.usuario?.admin;
-  if (isOperadorOnly) return <Navigate to="/aprovacoes" replace />;
+  if (perfilDoUsuario(user?.usuario) === 'operador') return <Navigate to="/aprovacoes" replace />;
   return <>{children}</>;
 }
 

@@ -2,6 +2,8 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import type { User as SupabaseAuthUser } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase/client';
 import type { User, Representante, Usuario, RepresentanteERP } from '@/types';
+import { perfilDoUsuario } from '@/constants/perfis';
+import { fetchUserGroupNames } from '@/services/clientGroups';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -94,6 +96,12 @@ async function buildUser(authUser: SupabaseAuthUser): Promise<User> {
     created_at: '',
   };
 
+  // Diretor: carrega os grupos de cliente vinculados (escopo de dados).
+  // Resiliente — [] se a migração de grupos ainda não estiver aplicada.
+  const grupos = perfilDoUsuario(usuario) === 'diretor'
+    ? await fetchUserGroupNames(authUser.id)
+    : [];
+
   // Representante "legado" (compatibilidade com telas que ainda leem user.representante)
   const representante: Representante = {
     id: authUser.id,
@@ -113,6 +121,7 @@ async function buildUser(authUser: SupabaseAuthUser): Promise<User> {
     usuario,
     representante,
     repCodes,
+    grupos,
   };
 }
 

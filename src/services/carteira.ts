@@ -19,6 +19,7 @@ export interface ClienteCarteira {
 export interface FetchCarteiraParams {
   repCodes?: string[];
   admin?: boolean;
+  grupos?: string[] | null;   // diretor: filtra por grupo_cliente (null = não-diretor)
   representante?: string; // filtro extra para admin
 }
 
@@ -36,9 +37,9 @@ const CAMPOS = [
 ].join(',');
 
 export async function fetchCarteira(params: FetchCarteiraParams): Promise<ClienteCarteira[]> {
-  const { repCodes = [], admin = false, representante } = params;
+  const { repCodes = [], admin = false, grupos = null, representante } = params;
 
-  if (!admin && repCodes.length === 0) return [];
+  if (grupos == null && !admin && repCodes.length === 0) return [];
 
   let query = supabase
     .from('concrem_pedidos_venda')
@@ -46,7 +47,9 @@ export async function fetchCarteira(params: FetchCarteiraParams): Promise<Client
     .in('id_nota_conf', VALID_ID_NOTA_CONF)
     .limit(5000);
 
-  if (!admin) {
+  if (grupos != null) {
+    query = query.in('grupo_cliente', grupos);
+  } else if (!admin) {
     query = query.in('representante', repCodes);
   } else if (representante) {
     query = query.ilike('representante', `%${representante}%`);
@@ -110,8 +113,8 @@ export interface ClientePedido {
 export async function fetchClientePedidos(
   params: FetchCarteiraParams & { cnpj: string }
 ): Promise<ClientePedido[]> {
-  const { cnpj, repCodes = [], admin = false, representante } = params;
-  if (!cnpj || (!admin && repCodes.length === 0)) return [];
+  const { cnpj, repCodes = [], admin = false, grupos = null, representante } = params;
+  if (!cnpj || (grupos == null && !admin && repCodes.length === 0)) return [];
 
   let query = supabase
     .from('concrem_pedidos_venda')
@@ -121,7 +124,9 @@ export async function fetchClientePedidos(
     .order('data_emissao', { ascending: true })
     .limit(1000);
 
-  if (!admin) {
+  if (grupos != null) {
+    query = query.in('grupo_cliente', grupos);
+  } else if (!admin) {
     query = query.in('representante', repCodes);
   } else if (representante) {
     query = query.ilike('representante', `%${representante}%`);

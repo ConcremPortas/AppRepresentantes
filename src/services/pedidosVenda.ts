@@ -50,6 +50,7 @@ async function enriquecerPedidos(pedidos: PedidoVenda[]): Promise<void> {
 export interface FetchPedidosParams {
   repCodes?: string[];   // vazio = admin (todos)
   admin?: boolean;
+  grupos?: string[] | null;   // diretor: filtra por grupo_cliente (null = não-diretor)
   page?: number;
   search?: string;      // nº pedido / CNPJ
   cliente?: string;     // nome/fantasia do cliente
@@ -67,7 +68,7 @@ export interface FetchPedidosResult {
 }
 
 export async function fetchPedidosVenda(params: FetchPedidosParams): Promise<FetchPedidosResult> {
-  const { repCodes = [], admin = false, page = 1, search, cliente, representante, dataInicio, dataFim, ano, mes, situacaoEntrega } = params;
+  const { repCodes = [], admin = false, grupos = null, page = 1, search, cliente, representante, dataInicio, dataFim, ano, mes, situacaoEntrega } = params;
 
   if (!admin && repCodes.length === 0) return { data: [], total: 0 };
 
@@ -82,7 +83,9 @@ export async function fetchPedidosVenda(params: FetchPedidosParams): Promise<Fet
     .not('representante', 'in', `(${REP_EXCLUIDOS.map(r => `"${r}"`).join(',')})`)
     .range(from, to);
 
-  if (!admin) {
+  if (grupos != null) {
+    query = query.in('grupo_cliente', grupos);
+  } else if (!admin) {
     query = query.in('representante', repCodes);
   }
 
@@ -174,8 +177,8 @@ export interface FetchPedidosCompletoResult {
 // Pedidos operar 100% client-side: KPIs, gráficos, quick-filters e as 3 visões
 // (Cards / Tabela / Pipeline) sem refetch a cada interação.
 export async function fetchPedidosCompleto(params: FetchPedidosParams): Promise<FetchPedidosCompletoResult> {
-  const { repCodes = [], admin = false, search, cliente, representante, ano, mes, situacaoEntrega } = params;
-  if (!admin && repCodes.length === 0) return { data: [], total: 0, truncated: false };
+  const { repCodes = [], admin = false, grupos = null, search, cliente, representante, ano, mes, situacaoEntrega } = params;
+  if (grupos == null && !admin && repCodes.length === 0) return { data: [], total: 0, truncated: false };
 
   let query = supabase
     .from('concrem_pedidos_venda')
@@ -185,7 +188,8 @@ export async function fetchPedidosCompleto(params: FetchPedidosParams): Promise<
     .not('representante', 'in', `(${REP_EXCLUIDOS.map(r => `"${r}"`).join(',')})`)
     .limit(CENTRAL_CAP);
 
-  if (!admin)        query = query.in('representante', repCodes);
+  if (grupos != null) query = query.in('grupo_cliente', grupos);
+  else if (!admin)   query = query.in('representante', repCodes);
   if (representante) query = query.ilike('representante', `%${representante}%`);
   if (search)        query = query.or(`numero_pedido.ilike.%${search}%,cliente_cnpj.ilike.%${search}%`);
   if (cliente)       query = query.or(`cliente_nome.ilike.%${cliente}%,cliente_fantasia.ilike.%${cliente}%`);

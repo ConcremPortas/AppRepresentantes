@@ -62,8 +62,9 @@ export function mapStatus(dbStatus: string | null): PedidoStatus {
 export async function fetchAcompanhamento(
   repCodes: string[],
   admin: boolean,
+  grupos: string[] | null = null,
 ): Promise<PedidoAcompanhamento[]> {
-  if (!admin && repCodes.length === 0) return [];
+  if (grupos == null && !admin && repCodes.length === 0) return [];
 
   // 1. Buscar pedidos em concrem_pedidos_venda
   let pedidosQuery = supabase
@@ -72,7 +73,9 @@ export async function fetchAcompanhamento(
     .in('id_nota_conf', VALID_ID_NOTA_CONF)
     .order('data_emissao', { ascending: false });
 
-  if (!admin && repCodes.length > 0) {
+  if (grupos != null) {
+    pedidosQuery = pedidosQuery.in('grupo_cliente', grupos);
+  } else if (!admin && repCodes.length > 0) {
     pedidosQuery = pedidosQuery.in('representante', repCodes);
   }
   if (REP_EXCLUIDOS.length > 0) {
