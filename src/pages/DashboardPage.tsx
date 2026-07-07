@@ -8,6 +8,9 @@ import GroupPerformancePanel from '@/components/dashboard/GroupPerformancePanel'
 import CommercialInsightsPanel from '@/components/dashboard/CommercialInsightsPanel';
 import DirectorFunnel from '@/components/dashboard/CommercialFunnel';
 import PipelineGargalos from '@/components/dashboard/PipelineGargalos';
+import { DirectorFiltersProvider } from '@/components/dashboard/DirectorFilters';
+import DirectorFilterBar from '@/components/dashboard/DirectorFilterBar';
+import FilteredKPIStrip from '@/components/dashboard/FilteredKPIStrip';
 import { useOrcamentos } from '@/hooks/useOrcamentos';
 import { useCarteira } from '@/hooks/useCarteira';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
@@ -949,17 +952,21 @@ export default function DashboardPage() {
 
       {/* ── Central Executiva (diretor / diretor geral) ── */}
       {isDiretor && (
-        <>
+        <DirectorFiltersProvider>
+          {/* Visão geral */}
           <Reveal delay={0.02}><CommercialInsightsPanel /></Reveal>
           <Reveal delay={0.04}><RepPerformancePanel /></Reveal>
           <Reveal delay={0.06}>
             <div className="grid gap-3 lg:grid-cols-2">
               <DirectorFunnel />
-              <PipelineGargalos />
+              <GroupPerformancePanel />
             </div>
           </Reveal>
-          <Reveal delay={0.08}><GroupPerformancePanel /></Reveal>
-        </>
+          {/* Visão operacional (filtrável) */}
+          <Reveal delay={0.08}><DirectorFilterBar /></Reveal>
+          <Reveal delay={0.10}><FilteredKPIStrip /></Reveal>
+          <Reveal delay={0.12}><PipelineGargalos /></Reveal>
+        </DirectorFiltersProvider>
       )}
 
       {/* ── Atividade (heatmap) + Top Representantes (admin) ── */}

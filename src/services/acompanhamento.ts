@@ -22,6 +22,7 @@ export interface PedidoAcompanhamento {
   cliente_cnpj: string;
   cliente_cidade: string | null;
   cliente_uf: string | null;
+  grupo_cliente: string | null;
   data_emissao: string;
   previsao_embarque: string | null;
   situacao_entrega: string | null;
@@ -69,7 +70,7 @@ export async function fetchAcompanhamento(
   // 1. Buscar pedidos em concrem_pedidos_venda
   let pedidosQuery = supabase
     .from('concrem_pedidos_venda')
-    .select('id, numero_pedido, cliente_nome, cliente_fantasia, cliente_cnpj, cliente_cidade, cliente_uf, data_emissao, previsao_embarque, situacao_entrega, total_pedido_venda, representante')
+    .select('id, numero_pedido, cliente_nome, cliente_fantasia, cliente_cnpj, cliente_cidade, cliente_uf, grupo_cliente, data_emissao, previsao_embarque, situacao_entrega, total_pedido_venda, representante')
     .in('id_nota_conf', VALID_ID_NOTA_CONF)
     .order('data_emissao', { ascending: false });
 
@@ -182,6 +183,7 @@ export async function fetchAcompanhamento(
       cliente_cnpj:       p.cliente_cnpj       ?? '',
       cliente_cidade:     (p as { cliente_cidade?: string | null }).cliente_cidade ?? null,
       cliente_uf:         (p as { cliente_uf?: string | null }).cliente_uf ?? null,
+      grupo_cliente:      (p as { grupo_cliente?: string | null }).grupo_cliente ?? null,
       data_emissao:       p.data_emissao       ?? '',
       previsao_embarque:  (p as { previsao_embarque?: string | null }).previsao_embarque ?? null,
       situacao_entrega:   (p as { situacao_entrega?: string | null }).situacao_entrega ?? null,

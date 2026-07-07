@@ -2,20 +2,10 @@ import { useMemo } from 'react';
 import { GitBranch, Clock, AlertTriangle, FileWarning } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { useAcompanhamento } from '@/hooks/useAcompanhamento';
+import { useDirectorFilters, applyPedidoFilters, PIPELINE_STAGES as STAGES } from './DirectorFilters';
 import { cn } from '@/utils/cn';
 
 const DAY = 86_400_000;
-const STAGES: { key: string; label: string; color: string }[] = [
-  { key: 'aprovado',   label: 'Aprovado',   color: '#3b82f6' },
-  { key: 'liberado',   label: 'Liberado',   color: '#8b5cf6' },
-  { key: 'mapeamento', label: 'Mapeamento', color: '#a855f7' },
-  { key: 'ferragem',   label: 'Ferragem',   color: '#f97316' },
-  { key: 'comercial',  label: 'Comercial',  color: '#6366f1' },
-  { key: 'producao',   label: 'Produção',   color: '#f59e0b' },
-  { key: 'faturado',   label: 'Faturado',   color: '#14b8a6' },
-  { key: 'entrega',    label: 'Entrega',    color: '#0ea5e9' },
-  { key: 'finalizado', label: 'Finalizado', color: '#22c55e' },
-];
 const FATURADO_ALEM = new Set(['faturado', 'entrega', 'finalizado']);
 
 function parseD(d?: string | null): Date | null {
@@ -45,7 +35,11 @@ function Gargalo({ icon: Icon, label, value, tone }: { icon: React.ElementType; 
 // Pipeline operacional (escopo do usuário): contagem por etapa + gargalos
 // (parados > 7 dias na etapa, atrasados vs embarque, docs pendentes em faturados+).
 export default function PipelineGargalos() {
-  const { data: pedidos = [], isLoading } = useAcompanhamento();
+  const { data: all = [], isLoading } = useAcompanhamento();
+  const { filters } = useDirectorFilters();
+
+  // grupo/rep/UF filtram a esteira; a etapa apenas DESTACA (a esteira mostra a distribuição completa)
+  const pedidos = useMemo(() => applyPedidoFilters(all, filters, { ignoreStatus: true }), [all, filters]);
 
   const { counts, parados, atrasados, docs, max } = useMemo(() => {
     const c: Record<string, number> = {};
@@ -81,7 +75,7 @@ export default function PipelineGargalos() {
         {isLoading ? (
           <p className="text-sm text-gray-400 py-10 text-center">Carregando…</p>
         ) : pedidos.length === 0 ? (
-          <p className="text-sm text-gray-400 py-10 text-center">Sem pedidos no seu escopo.</p>
+          <p className="text-sm text-gray-400 py-10 text-center">Nenhum pedido para os filtros atuais.</p>
         ) : (
           <>
             {/* Gargalos */}
@@ -94,9 +88,10 @@ export default function PipelineGargalos() {
             <div className="space-y-1.5">
               {STAGES.map(s => {
                 const n = counts[s.key] ?? 0;
+                const dimmed = filters.status !== '' && filters.status !== s.key;
                 return (
-                  <div key={s.key} className="flex items-center gap-2">
-                    <span className="text-[11px] text-gray-500 w-20 flex-shrink-0 truncate">{s.label}</span>
+                  <div key={s.key} className={cn('flex items-center gap-2 transition-opacity', dimmed && 'opacity-35')}>
+                    <span className={cn('text-[11px] w-20 flex-shrink-0 truncate', filters.status === s.key ? 'text-gray-900 font-semibold' : 'text-gray-500')}>{s.label}</span>
                     <div className="h-2 flex-1 rounded-full bg-gray-100 overflow-hidden">
                       <div className="h-full rounded-full transition-all duration-700" style={{ width: `${(n / max) * 100}%`, backgroundColor: s.color }} />
                     </div>
