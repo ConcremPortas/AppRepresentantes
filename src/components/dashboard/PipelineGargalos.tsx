@@ -3,22 +3,8 @@ import { GitBranch, Clock, AlertTriangle, FileWarning } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { useAcompanhamento } from '@/hooks/useAcompanhamento';
 import { useDirectorFilters, applyPedidoFilters, PIPELINE_STAGES as STAGES } from './DirectorFilters';
+import { computeGargalos } from '@/utils/pipeline';
 import { cn } from '@/utils/cn';
-
-const DAY = 86_400_000;
-const FATURADO_ALEM = new Set(['faturado', 'entrega', 'finalizado']);
-
-function parseD(d?: string | null): Date | null {
-  if (!d) return null;
-  const s = d.slice(0, 10);
-  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(`${s}T12:00:00`) : null;
-}
-function classifyAnexo(t: string): 'nf' | 'boleto' | 'outro' {
-  const s = (t ?? '').toLowerCase();
-  if (s.includes('boleto')) return 'boleto';
-  if (s.includes('nota') || s.includes('nf') || s.includes('fiscal')) return 'nf';
-  return 'outro';
-}
 
 function Gargalo({ icon: Icon, label, value, tone }: { icon: React.ElementType; label: string; value: number; tone: string }) {
   return (
@@ -42,25 +28,8 @@ export default function PipelineGargalos() {
   const pedidos = useMemo(() => applyPedidoFilters(all, filters, { ignoreStatus: true }), [all, filters]);
 
   const { counts, parados, atrasados, docs, max } = useMemo(() => {
-    const c: Record<string, number> = {};
-    let par = 0, atr = 0, dp = 0;
-    const hoje = new Date();
-    for (const p of pedidos) {
-      c[p.status] = (c[p.status] ?? 0) + 1;
-      if (p.status !== 'finalizado') {
-        const base = parseD(p.status_updated_at ?? p.data_emissao);
-        if (base && (hoje.getTime() - base.getTime()) / DAY > 7) par++;
-        const emb = parseD(p.previsao_embarque);
-        if (emb && emb < hoje) atr++;
-      }
-      if (FATURADO_ALEM.has(p.status)) {
-        const anexos = p.anexos ?? [];
-        const nf = anexos.some(a => classifyAnexo(a.tipo) === 'nf');
-        const bol = anexos.some(a => classifyAnexo(a.tipo) === 'boleto');
-        if (!nf || !bol) dp++;
-      }
-    }
-    return { counts: c, parados: par, atrasados: atr, docs: dp, max: Math.max(1, ...STAGES.map(s => c[s.key] ?? 0)) };
+    const g = computeGargalos(pedidos);
+    return { ...g, max: Math.max(1, ...STAGES.map(s => g.counts[s.key] ?? 0)) };
   }, [pedidos]);
 
   return (

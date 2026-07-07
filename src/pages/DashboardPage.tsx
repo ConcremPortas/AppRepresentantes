@@ -11,6 +11,9 @@ import PipelineGargalos from '@/components/dashboard/PipelineGargalos';
 import { DirectorFiltersProvider } from '@/components/dashboard/DirectorFilters';
 import DirectorFilterBar from '@/components/dashboard/DirectorFilterBar';
 import FilteredKPIStrip from '@/components/dashboard/FilteredKPIStrip';
+import PanoramaGlobal from '@/components/dashboard/PanoramaGlobal';
+import UFDistributionPanel from '@/components/dashboard/UFDistributionPanel';
+import RiskPanel from '@/components/dashboard/RiskPanel';
 import { useOrcamentos } from '@/hooks/useOrcamentos';
 import { useCarteira } from '@/hooks/useCarteira';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
@@ -599,6 +602,7 @@ export default function DashboardPage() {
   const perfil = perfilDoUsuario(user?.usuario);
   const isAdmin = perfil === 'admin' || perfil === 'diretor_geral';
   const isDiretor = perfil === 'diretor' || perfil === 'diretor_geral';
+  const isGeral = perfil === 'diretor_geral';
 
   // ── Filtros / modo ──
   const [periodo, setPeriodo] = useState<'mes' | 'trimestre' | 'ano'>('mes');
@@ -953,6 +957,16 @@ export default function DashboardPage() {
       {/* ── Central Executiva (diretor / diretor geral) ── */}
       {isDiretor && (
         <DirectorFiltersProvider>
+          {/* Visão global (apenas Diretor Geral) */}
+          {isGeral && <Reveal delay={0.01}><PanoramaGlobal /></Reveal>}
+          {isGeral && (
+            <Reveal delay={0.015}>
+              <div className="grid gap-3 lg:grid-cols-2">
+                <UFDistributionPanel />
+                <RiskPanel />
+              </div>
+            </Reveal>
+          )}
           {/* Visão geral */}
           <Reveal delay={0.02}><CommercialInsightsPanel /></Reveal>
           <Reveal delay={0.04}><RepPerformancePanel /></Reveal>
