@@ -970,12 +970,8 @@ export default function DashboardPage() {
           {/* Visão geral */}
           <Reveal delay={0.02}><CommercialInsightsPanel /></Reveal>
           <Reveal delay={0.04}><RepPerformancePanel /></Reveal>
-          <Reveal delay={0.06}>
-            <div className="grid gap-3 lg:grid-cols-2">
-              <DirectorFunnel />
-              <GroupPerformancePanel />
-            </div>
-          </Reveal>
+          <Reveal delay={0.06}><DirectorFunnel /></Reveal>
+          <Reveal delay={0.07}><GroupPerformancePanel /></Reveal>
           {/* Visão operacional (filtrável) */}
           <Reveal delay={0.08}><DirectorFilterBar /></Reveal>
           <Reveal delay={0.10}><FilteredKPIStrip /></Reveal>

@@ -23,7 +23,7 @@ export default function GroupPerformancePanel() {
         ) : grupos.length === 0 ? (
           <p className="text-sm text-gray-400 py-10 text-center">Nenhum grupo com pedidos no seu escopo.</p>
         ) : (
-          <div className="space-y-2.5">
+          <div className="grid sm:grid-cols-2 gap-2.5">
             {grupos.map(g => (
               <div key={g.grupo} className="rounded-2xl border border-gray-200/70 p-3 min-w-0">
                 <div className="flex items-center justify-between gap-2">
