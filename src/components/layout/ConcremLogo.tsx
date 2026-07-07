@@ -2,7 +2,7 @@ import { cn } from '@/utils/cn';
 
 // Logos servidos de public/logos (case-sensitive na Vercel).
 const LOGO_ABERTA  = `${import.meta.env.BASE_URL}logos/Logo-Branco.png`;      // sidebar aberta
-const LOGO_FECHADA = `${import.meta.env.BASE_URL}logos/Isotipo-CorBranco.png`; // sidebar fechada
+const LOGO_FECHADA = `${import.meta.env.BASE_URL}logos/Isotipo-Branco.png`; // sidebar fechada
 
 interface ConcremLogoProps {
   collapsed?: boolean;
