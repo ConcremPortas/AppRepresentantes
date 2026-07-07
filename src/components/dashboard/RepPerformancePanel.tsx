@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UsersRound, X, ShoppingCart, DollarSign, UserCheck, AlertTriangle, Moon, Award, CalendarClock } from 'lucide-react';
+import { UsersRound, X, ShoppingCart, DollarSign, UserCheck, AlertTriangle, Moon, Award, CalendarClock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { useRepPerformance } from '@/hooks/useRepPerformance';
 import { formatCurrencyK, formatDate } from '@/utils/formatters';
@@ -13,6 +13,8 @@ const BADGE: Record<RepBadge, { label: string; cls: string; bar: string }> = {
   atencao:   { label: 'Atenção',   cls: 'bg-amber-50 text-amber-700 border-amber-200',       bar: 'bg-amber-500' },
   critico:   { label: 'Crítico',   cls: 'bg-red-50 text-red-600 border-red-200',             bar: 'bg-red-500' },
 };
+
+const PAGE_SIZE = 8;
 
 type Criterio = 'score' | 'receita' | 'pedidos' | 'ticket' | 'ativos' | 'atraso';
 const CRITERIOS: { key: Criterio; label: string }[] = [
@@ -49,10 +51,19 @@ export default function RepPerformancePanel() {
   const { data: reps = [], isLoading } = useRepPerformance();
   const [criterio, setCriterio] = useState<Criterio>('score');
   const [sel, setSel] = useState<RepPerf | null>(null);
+  const [page, setPage] = useState(0);
 
   const ordenados = useMemo(() => ordenar(reps, criterio), [reps, criterio]);
   const top = ordenados.slice(0, 3);
   const maxRec = Math.max(1, ...reps.map(r => r.totalVendido));
+
+  // Paginação da matriz — volta à 1ª página ao trocar a ordenação
+  useEffect(() => { setPage(0); }, [criterio]);
+  const totalPages = Math.max(1, Math.ceil(ordenados.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const pageRows = ordenados.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
+  const primeiro = ordenados.length === 0 ? 0 : safePage * PAGE_SIZE + 1;
+  const ultimo = Math.min(ordenados.length, safePage * PAGE_SIZE + PAGE_SIZE);
 
   return (
     <Card className="min-w-0 overflow-hidden">
@@ -113,7 +124,7 @@ export default function RepPerformancePanel() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {ordenados.map(r => (
+                  {pageRows.map(r => (
                     <tr key={r.representante} onClick={() => setSel(r)} className="hover:bg-gray-50/70 transition-colors cursor-pointer">
                       <td className="px-3 py-2 font-medium text-gray-800 truncate max-w-[220px]">{r.representante}</td>
                       <td className="px-3 py-2">
@@ -141,7 +152,27 @@ export default function RepPerformancePanel() {
                   ))}
                 </tbody>
               </table>
-              <p className="text-[10px] text-gray-400 mt-2 px-3">Clientes: <span className="text-emerald-600">ativos</span> · <span className="text-red-500">atrasados</span> · <span className="text-gray-400">dormentes</span>. Clique numa linha para o detalhe.</p>
+            </div>
+
+            {/* Rodapé: legenda + paginação */}
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mt-3 px-1">
+              <p className="text-[10px] text-gray-400">Clientes: <span className="text-emerald-600">ativos</span> · <span className="text-red-500">atrasados</span> · <span className="text-gray-400">dormentes</span>. Clique numa linha para o detalhe.</p>
+              {ordenados.length > PAGE_SIZE && (
+                <div className="flex items-center gap-2 ml-auto">
+                  <span className="text-[11px] text-gray-400 tabular-nums">{primeiro}–{ultimo} de {ordenados.length}</span>
+                  <div className="flex items-center gap-1">
+                    <button type="button" onClick={() => setPage(safePage - 1)} disabled={safePage <= 0}
+                      className="w-7 h-7 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Página anterior">
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="text-[11px] font-semibold text-gray-600 tabular-nums w-10 text-center">{safePage + 1}/{totalPages}</span>
+                    <button type="button" onClick={() => setPage(safePage + 1)} disabled={safePage >= totalPages - 1}
+                      className="w-7 h-7 rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors" aria-label="Próxima página">
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}
