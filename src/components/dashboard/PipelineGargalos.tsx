@@ -8,11 +8,11 @@ import { cn } from '@/utils/cn';
 
 function Gargalo({ icon: Icon, label, value, tone }: { icon: React.ElementType; label: string; value: number; tone: string }) {
   return (
-    <div className="rounded-xl border border-gray-100 bg-gray-50/60 px-3 py-2 flex items-center gap-2.5 min-w-0">
+    <div className="rounded-xl border border-gray-100 bg-gray-50/60 px-2.5 py-2 flex items-center gap-2 min-w-0">
       <span className={cn('w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0', tone)}><Icon className="w-4 h-4" /></span>
       <div className="min-w-0">
         <p className="text-lg font-bold text-gray-900 tabular-nums leading-none">{value}</p>
-        <p className="text-[10px] text-gray-400 truncate">{label}</p>
+        <p className="text-[10px] text-gray-400 leading-tight">{label}</p>
       </div>
     </div>
   );

@@ -12,7 +12,7 @@ function RiskKpi({ icon: Icon, label, value, tone }: { icon: React.ElementType; 
       <span className={cn('w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0', tone)}><Icon className="w-4 h-4" /></span>
       <div className="min-w-0">
         <p className="text-xl font-bold text-gray-900 tabular-nums leading-none">{value}</p>
-        <p className="text-[10px] text-gray-400 truncate mt-0.5">{label}</p>
+        <p className="text-[10px] text-gray-400 leading-tight mt-0.5">{label}</p>
       </div>
     </div>
   );

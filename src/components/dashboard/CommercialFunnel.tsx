@@ -51,7 +51,7 @@ export default function CommercialFunnel() {
               return (
                 <div key={e.key}>
                   <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className="text-xs font-medium text-gray-600">{e.label}</span>
+                    <span className="text-xs font-medium text-gray-600 min-w-0 truncate">{e.label}</span>
                     <span className="flex items-center gap-2 flex-shrink-0">
                       {conv !== null && (
                         <span className={cnv(conv)}>{conv.toFixed(0)}%</span>

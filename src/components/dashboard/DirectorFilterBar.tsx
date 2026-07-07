@@ -39,10 +39,10 @@ export default function DirectorFilterBar() {
         <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 mr-1">
           <SlidersHorizontal className="w-3.5 h-3.5" /> Filtros
         </span>
-        <Select chip value={filters.grupo}  onChange={v => set({ grupo: v })}  options={withTodos('grupos', grupos)} placeholder="Grupo" />
-        <Select chip value={filters.rep}    onChange={v => set({ rep: v })}    options={withTodos('reps', reps)}     placeholder="Representante" />
-        <Select chip value={filters.uf}     onChange={v => set({ uf: v })}     options={withTodos('UFs', ufs)}       placeholder="UF" />
-        <Select chip value={filters.status} onChange={v => set({ status: v })} options={withTodos('etapas', etapas)} placeholder="Etapa" />
+        <Select chip value={filters.grupo}  onChange={v => set({ grupo: v })}  options={withTodos('grupos', grupos)} placeholder="Grupo"        className="max-w-[44vw] sm:max-w-[200px]" />
+        <Select chip value={filters.rep}    onChange={v => set({ rep: v })}    options={withTodos('reps', reps)}     placeholder="Representante" className="max-w-[44vw] sm:max-w-[220px]" />
+        <Select chip value={filters.uf}     onChange={v => set({ uf: v })}     options={withTodos('UFs', ufs)}       placeholder="UF"           className="max-w-[30vw] sm:max-w-[120px]" />
+        <Select chip value={filters.status} onChange={v => set({ status: v })} options={withTodos('etapas', etapas)} placeholder="Etapa"        className="max-w-[44vw] sm:max-w-[160px]" />
         {active > 0 && (
           <button
             onClick={clear}
