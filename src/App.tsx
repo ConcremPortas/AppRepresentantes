@@ -28,10 +28,11 @@ const queryClient = new QueryClient({
   },
 });
 
-// ─── Guard: visão global (admin ou diretor geral) ────────
+// ─── Guard: GESTÃO (Representantes/Usuários/Grupos) — SOMENTE administrador ─
+// Diretor Geral vê todos os dados do sistema, mas não acessa a gestão.
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  if (!isGlobal(perfilDoUsuario(user?.usuario))) return <Navigate to="/dashboard" replace />;
+  if (perfilDoUsuario(user?.usuario) !== 'admin') return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
@@ -49,14 +50,6 @@ function OperadorRoute({ children }: { children: React.ReactNode }) {
 function RepRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   if (perfilDoUsuario(user?.usuario) === 'operador') return <Navigate to="/aprovacoes" replace />;
-  return <>{children}</>;
-}
-
-// ─── Guard: gestão de usuários — SOMENTE administrador ─
-// (Diretor Geral vê os dados do sistema, mas não cria/gerencia usuários.)
-function SoAdminRoute({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
-  if (perfilDoUsuario(user?.usuario) !== 'admin') return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
 
@@ -117,7 +110,7 @@ function AppRoutes() {
 
         {/* Apenas admin */}
         <Route path="admin/representantes" element={<AdminRoute><AdminRepresentantesPage /></AdminRoute>} />
-        <Route path="admin/usuarios"       element={<SoAdminRoute><AdminUsuariosPage /></SoAdminRoute>} />
+        <Route path="admin/usuarios"       element={<AdminRoute><AdminUsuariosPage /></AdminRoute>} />
         <Route path="admin/grupos"         element={<AdminRoute><AdminGruposPage /></AdminRoute>} />
       </Route>
       {/* Já autenticado: qualquer rota desconhecida (inclusive /login) → dashboard */}

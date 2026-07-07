@@ -146,10 +146,8 @@ export default function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const isOperador = perfil === 'operador';
   const isDiretor  = perfil === 'diretor';
   const rawGroups = isAdmin ? ADMIN_GROUPS : isOperador ? OPERADOR_GROUPS : REP_GROUPS;
-  // Gestão de Usuários é exclusiva do Administrador (Diretor Geral não cria usuários)
-  const GROUPS = perfil === 'admin'
-    ? rawGroups
-    : rawGroups.map(g => ({ ...g, items: g.items.filter(it => it.to !== '/admin/usuarios') }));
+  // Seção "Gestão" (Representantes/Usuários/Grupos) é exclusiva do Administrador.
+  const GROUPS = perfil === 'admin' ? rawGroups : rawGroups.filter(g => g.key !== 'gestao');
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     operacional: true,
