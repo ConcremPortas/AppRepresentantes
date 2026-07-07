@@ -1,0 +1,6 @@
+# Concrem Connect — aplicação privada de uso restrito a representantes autorizados.
+# A indexação por mecanismos de busca é desabilitada intencionalmente.
+User-agent: *
+Disallow: /
+
+# Sem sitemap: não há área pública indexável.
