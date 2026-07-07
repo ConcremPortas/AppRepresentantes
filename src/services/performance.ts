@@ -103,3 +103,67 @@ export async function fetchRepPerformance(grupos: string[] | null, admin: boolea
 
   return scored.sort((a, b) => b.totalVendido - a.totalVendido);
 }
+
+// ─── Performance por GRUPO de cliente ────────────────────────────────────────
+export interface GroupPerf {
+  grupo: string;
+  receita: number;
+  pedidos: number;
+  clientes: number;            // CNPJs distintos
+  ticketMedio: number;
+  clientesAtrasados: number;   // última compra 31–60 dias
+  clientesDormentes: number;   // > 60 dias
+  representantes: number;      // representantes distintos atuando
+  pctReceita: number;          // participação % na receita do escopo
+}
+
+export async function fetchGroupPerformance(grupos: string[] | null, admin: boolean): Promise<GroupPerf[]> {
+  if (grupos == null && !admin) return [];
+
+  let q = supabase
+    .from('concrem_pedidos_venda')
+    .select('grupo_cliente, total_pedido_venda, cliente_cnpj, representante, data_emissao')
+    .in('id_nota_conf', VALID_ID_NOTA_CONF)
+    .not('representante', 'in', `(${REP_EXCLUIDOS.map(r => `"${r}"`).join(',')})`)
+    .limit(50000);
+  if (grupos != null) q = q.in('grupo_cliente', grupos);
+
+  const { data, error } = await q;
+  if (error) throw error;
+
+  type Acc = { receita: number; pedidos: number; ultPorCnpj: Map<string, string>; reps: Set<string> };
+  const map = new Map<string, Acc>();
+  for (const r of (data ?? []) as { grupo_cliente: string | null; total_pedido_venda: number; cliente_cnpj: string; representante: string; data_emissao: string }[]) {
+    const g = (r.grupo_cliente ?? '').trim() || 'SEM GRUPO';
+    const e = map.get(g) ?? { receita: 0, pedidos: 0, ultPorCnpj: new Map<string, string>(), reps: new Set<string>() };
+    e.receita += r.total_pedido_venda ?? 0;
+    e.pedidos += 1;
+    const cnpj = (r.cliente_cnpj ?? '').trim();
+    const d = (r.data_emissao ?? '').slice(0, 10);
+    if (cnpj && d) { const prev = e.ultPorCnpj.get(cnpj); if (!prev || d > prev) e.ultPorCnpj.set(cnpj, d); }
+    if (r.representante?.trim()) e.reps.add(r.representante.trim());
+    map.set(g, e);
+  }
+
+  const hoje = new Date();
+  const total = [...map.values()].reduce((s, e) => s + e.receita, 0) || 1;
+  return [...map.entries()].map(([grupo, e]) => {
+    let atrasados = 0, dormentes = 0;
+    for (const d of e.ultPorCnpj.values()) {
+      const dt = /^\d{4}-\d{2}-\d{2}$/.test(d) ? new Date(`${d}T12:00:00`) : null;
+      const dias = dt ? Math.floor((hoje.getTime() - dt.getTime()) / DAY) : 9999;
+      if (dias > 60) dormentes++; else if (dias > 30) atrasados++;
+    }
+    return {
+      grupo,
+      receita: e.receita,
+      pedidos: e.pedidos,
+      clientes: e.ultPorCnpj.size,
+      ticketMedio: e.pedidos > 0 ? e.receita / e.pedidos : 0,
+      clientesAtrasados: atrasados,
+      clientesDormentes: dormentes,
+      representantes: e.reps.size,
+      pctReceita: (e.receita / total) * 100,
+    };
+  }).sort((a, b) => b.receita - a.receita);
+}

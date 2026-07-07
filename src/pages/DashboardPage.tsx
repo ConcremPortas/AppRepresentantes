@@ -4,6 +4,8 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useAuth } from '@/hooks/useAuth';
 import { perfilDoUsuario } from '@/constants/perfis';
 import RepPerformancePanel from '@/components/dashboard/RepPerformancePanel';
+import GroupPerformancePanel from '@/components/dashboard/GroupPerformancePanel';
+import CommercialInsightsPanel from '@/components/dashboard/CommercialInsightsPanel';
 import { useOrcamentos } from '@/hooks/useOrcamentos';
 import { useCarteira } from '@/hooks/useCarteira';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
@@ -943,9 +945,13 @@ export default function DashboardPage() {
         </div>
       </Reveal>
 
-      {/* ── Performance dos representantes (diretor / diretor geral) ── */}
+      {/* ── Central Executiva (diretor / diretor geral) ── */}
       {isDiretor && (
-        <Reveal delay={0.04}><RepPerformancePanel /></Reveal>
+        <>
+          <Reveal delay={0.02}><CommercialInsightsPanel /></Reveal>
+          <Reveal delay={0.04}><RepPerformancePanel /></Reveal>
+          <Reveal delay={0.06}><GroupPerformancePanel /></Reveal>
+        </>
       )}
 
       {/* ── Atividade (heatmap) + Top Representantes (admin) ── */}
