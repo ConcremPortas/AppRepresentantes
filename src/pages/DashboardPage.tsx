@@ -6,6 +6,8 @@ import { perfilDoUsuario } from '@/constants/perfis';
 import RepPerformancePanel from '@/components/dashboard/RepPerformancePanel';
 import GroupPerformancePanel from '@/components/dashboard/GroupPerformancePanel';
 import CommercialInsightsPanel from '@/components/dashboard/CommercialInsightsPanel';
+import DirectorFunnel from '@/components/dashboard/CommercialFunnel';
+import PipelineGargalos from '@/components/dashboard/PipelineGargalos';
 import { useOrcamentos } from '@/hooks/useOrcamentos';
 import { useCarteira } from '@/hooks/useCarteira';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
@@ -950,7 +952,13 @@ export default function DashboardPage() {
         <>
           <Reveal delay={0.02}><CommercialInsightsPanel /></Reveal>
           <Reveal delay={0.04}><RepPerformancePanel /></Reveal>
-          <Reveal delay={0.06}><GroupPerformancePanel /></Reveal>
+          <Reveal delay={0.06}>
+            <div className="grid gap-3 lg:grid-cols-2">
+              <DirectorFunnel />
+              <PipelineGargalos />
+            </div>
+          </Reveal>
+          <Reveal delay={0.08}><GroupPerformancePanel /></Reveal>
         </>
       )}
 
