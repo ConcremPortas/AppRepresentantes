@@ -52,6 +52,14 @@ function RepRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// ─── Guard: gestão de usuários — SOMENTE administrador ─
+// (Diretor Geral vê os dados do sistema, mas não cria/gerencia usuários.)
+function SoAdminRoute({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  if (perfilDoUsuario(user?.usuario) !== 'admin') return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+}
+
 // ─── Guard: criar/editar orçamento (diretor é somente-leitura) ─
 function OrcEditorRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -109,7 +117,7 @@ function AppRoutes() {
 
         {/* Apenas admin */}
         <Route path="admin/representantes" element={<AdminRoute><AdminRepresentantesPage /></AdminRoute>} />
-        <Route path="admin/usuarios"       element={<AdminRoute><AdminUsuariosPage /></AdminRoute>} />
+        <Route path="admin/usuarios"       element={<SoAdminRoute><AdminUsuariosPage /></SoAdminRoute>} />
         <Route path="admin/grupos"         element={<AdminRoute><AdminGruposPage /></AdminRoute>} />
       </Route>
       {/* Já autenticado: qualquer rota desconhecida (inclusive /login) → dashboard */}
