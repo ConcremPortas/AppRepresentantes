@@ -5,6 +5,9 @@ import { useRepPerformance, useGroupPerformance } from '@/hooks/useRepPerformanc
 import { formatCurrencyK } from '@/utils/formatters';
 import { cn } from '@/utils/cn';
 
+// Tons de verde para as fatias do 1º, 2º e 3º maiores grupos
+const SHADES = ['#059669', '#10b981', '#34d399'];
+
 function Tile({ icon: Icon, label, value, tone }: { icon: React.ElementType; label: string; value: string; tone: string }) {
   return (
     <div className="rounded-2xl border border-gray-200/70 bg-white p-3 min-w-0">
@@ -57,24 +60,29 @@ export default function PanoramaGlobal() {
                   <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500"><PieChart className="w-3.5 h-3.5" />Concentração de receita</span>
                   <span className="text-xs font-bold text-gray-700 tabular-nums">Top 3 · {top3.toFixed(0)}%</span>
                 </div>
-                <div className="flex h-3 rounded-full overflow-hidden bg-gray-100">
-                  <div className="h-full bg-emerald-500 transition-all duration-700" style={{ width: `${top3}%` }} title={`Top 3 grupos: ${top3.toFixed(0)}%`} />
-                  <div className="h-full bg-gray-300 transition-all duration-700" style={{ width: `${resto}%` }} title={`Demais grupos: ${resto.toFixed(0)}%`} />
-                </div>
-                {/* Quais são os 3 maiores grupos */}
-                <div className="mt-2 space-y-1">
+                {/* Barra segmentada: cada grupo é uma fatia proporcional, dividida por | */}
+                <div className="flex h-7 rounded-lg overflow-hidden bg-gray-100">
                   {top3List.map((g, i) => (
-                    <div key={g.grupo} className="flex items-center gap-2 min-w-0">
-                      <span className="w-4 h-4 rounded-md bg-emerald-500 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
-                      <span className="text-[11px] font-medium text-gray-700 truncate">{g.grupo}</span>
-                      <span className="text-[10px] text-gray-400 tabular-nums ml-auto flex-shrink-0">{g.pctReceita.toFixed(0)}% · {formatCurrencyK(g.receita)}</span>
+                    <div
+                      key={g.grupo}
+                      className="h-full flex items-center px-2 min-w-0 text-white border-r-2 border-white transition-all duration-700"
+                      style={{ width: `${g.pctReceita}%`, backgroundColor: SHADES[i] }}
+                      title={`${g.grupo}: ${g.pctReceita.toFixed(0)}% · ${formatCurrencyK(g.receita)}`}
+                    >
+                      <span className="text-[10px] font-semibold truncate">{g.grupo}</span>
+                      <span className="text-[10px] font-bold tabular-nums ml-auto pl-1 flex-shrink-0">{g.pctReceita.toFixed(0)}%</span>
                     </div>
                   ))}
-                  <div className="flex items-center gap-2 text-[10px] text-gray-400">
-                    <span className="w-4 h-4 rounded-md bg-gray-300 flex-shrink-0" />
-                    <span>Demais {Math.max(0, grupos.length - 3)} grupo(s)</span>
-                    <span className="ml-auto tabular-nums">{resto.toFixed(0)}%</span>
-                  </div>
+                  {resto > 0 && (
+                    <div
+                      className="h-full flex items-center px-2 min-w-0 bg-gray-300 text-gray-600 transition-all duration-700"
+                      style={{ width: `${resto}%` }}
+                      title={`Demais ${Math.max(0, grupos.length - 3)} grupo(s): ${resto.toFixed(0)}%`}
+                    >
+                      <span className="text-[10px] font-medium truncate">Demais</span>
+                      <span className="text-[10px] font-bold tabular-nums ml-auto pl-1 flex-shrink-0">{resto.toFixed(0)}%</span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
