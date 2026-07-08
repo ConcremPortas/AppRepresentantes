@@ -6,6 +6,7 @@ import { useRepPerformance } from '@/hooks/useRepPerformance';
 import { formatCurrencyK, formatDate } from '@/utils/formatters';
 import { cn } from '@/utils/cn';
 import type { RepPerf, RepBadge } from '@/services/performance';
+import type { DashboardFiltros } from '@/services/dashboard';
 
 const BADGE: Record<RepBadge, { label: string; cls: string; bar: string }> = {
   excelente: { label: 'Excelente', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', bar: 'bg-emerald-500' },
@@ -47,8 +48,8 @@ function Metric({ icon: Icon, label, value, tone }: { icon: React.ElementType; l
   );
 }
 
-export default function RepPerformancePanel() {
-  const { data: reps = [], isLoading } = useRepPerformance();
+export default function RepPerformancePanel({ period }: { period?: DashboardFiltros }) {
+  const { data: reps = [], isLoading } = useRepPerformance(period);
   const [criterio, setCriterio] = useState<Criterio>('score');
   const [sel, setSel] = useState<RepPerf | null>(null);
   const [page, setPage] = useState(0);

@@ -37,7 +37,7 @@ export default function ExecutiveDashboardPager({ global = false }: { global?: b
 
   // Contadores para a navegação (dados já escopados; cache compartilhado com as páginas)
   const summary = useExecutiveSummary(period);
-  const { data: reps = [] } = useRepPerformance();
+  const { data: reps = [] } = useRepPerformance(period);
   const repsAtencao = useMemo(() => reps.filter(r => r.badge === 'atencao' || r.badge === 'critico').length, [reps]);
 
   const items: NavItem[] = [
@@ -121,9 +121,9 @@ export default function ExecutiveDashboardPager({ global = false }: { global?: b
             <AnimatePresence mode="wait" custom={direction} initial={false}>
               <ExecutivePageShell key={active} direction={direction}>
                 {active === 'geral' && <OverviewPage period={period} global={global} />}
-                {active === 'representantes' && <RepresentativesPage />}
-                {active === 'grupos' && <GroupsPage global={global} />}
-                {active === 'operacao' && <OperationsPage />}
+                {active === 'representantes' && <RepresentativesPage period={period} />}
+                {active === 'grupos' && <GroupsPage period={period} global={global} />}
+                {active === 'operacao' && <OperationsPage period={period} />}
                 {active === 'riscos' && <RisksPage period={period} />}
               </ExecutivePageShell>
             </AnimatePresence>

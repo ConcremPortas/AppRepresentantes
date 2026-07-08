@@ -68,6 +68,24 @@ function endOf(year: number, month: number) {
 
 const MES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
+// Intervalo [ini, fim] (YYYY-MM-DD) do período selecionado — reutilizado por
+// outros serviços (performance por rep/grupo) para respeitar o filtro de período.
+export function periodoRange(filtros: DashboardFiltros = {}): { ini: string; fim: string } {
+  const periodo = filtros.periodo ?? 'mes';
+  const now = new Date();
+  const ano = filtros.ano ?? now.getFullYear();
+  if (periodo === 'trimestre') {
+    const t = filtros.trimestre ?? (Math.floor(now.getMonth() / 3) + 1);
+    const q = (t - 1) * 3;
+    return { ini: startOf(ano, q), fim: endOf(ano, q + 2) };
+  }
+  if (periodo === 'ano') {
+    return { ini: startOf(ano, 0), fim: endOf(ano, 11) };
+  }
+  const m = (filtros.mes ?? (now.getMonth() + 1)) - 1;
+  return { ini: startOf(ano, m), fim: endOf(ano, m) };
+}
+
 // ─── Fetch principal ──────────────────────────────────────────
 export async function fetchDashboardStats(
   repCodes: string[],

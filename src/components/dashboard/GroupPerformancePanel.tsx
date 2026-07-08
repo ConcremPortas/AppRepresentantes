@@ -2,11 +2,12 @@ import { Layers, ShoppingCart, Users, DollarSign, AlertTriangle, Briefcase } fro
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { useGroupPerformance } from '@/hooks/useRepPerformance';
 import { formatCurrencyK } from '@/utils/formatters';
+import type { DashboardFiltros } from '@/services/dashboard';
 
 // Performance por grupo de cliente (escopo do usuário): receita + participação,
 // pedidos, clientes, ticket, representantes atuando e clientes atrasados/dormentes.
-export default function GroupPerformancePanel() {
-  const { data: grupos = [], isLoading } = useGroupPerformance();
+export default function GroupPerformancePanel({ period }: { period?: DashboardFiltros }) {
+  const { data: grupos = [], isLoading } = useGroupPerformance(period);
   const maxRec = Math.max(1, ...grupos.map(g => g.receita));
 
   return (

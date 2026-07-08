@@ -7,6 +7,8 @@ import { useAcompanhamento } from '@/hooks/useAcompanhamento';
 import { useOrcamentos } from '@/hooks/useOrcamentos';
 import { useDirectorFilters, applyPedidoFilters } from '@/components/dashboard/DirectorFilters';
 import { FATURADO_ALEM, classifyAnexo } from '@/utils/pipeline';
+import { periodoRange } from '@/services/dashboard';
+import type { ExecutivePeriod } from '@/hooks/useExecutiveSummary';
 import { cn } from '@/utils/cn';
 
 const DAY = 86_400_000;
@@ -28,10 +30,14 @@ function Stat({ icon: Icon, label, value, tone }: { icon: React.ElementType; lab
   );
 }
 
-function DocumentosPanel() {
+function DocumentosPanel({ period }: { period: ExecutivePeriod }) {
   const { data: all = [] } = useAcompanhamento();
   const { filters } = useDirectorFilters();
-  const pedidos = useMemo(() => applyPedidoFilters(all, filters, { ignoreStatus: true }), [all, filters]);
+  const pedidos = useMemo(() => {
+    const scoped = applyPedidoFilters(all, filters, { ignoreStatus: true });
+    const { ini, fim } = periodoRange(period);
+    return scoped.filter(p => { const d = (p.data_emissao || '').slice(0, 10); return d >= ini && d <= fim; });
+  }, [all, filters, period]);
 
   const { semNF, semBoleto, completos, pendentes } = useMemo(() => {
     let semNF = 0, semBoleto = 0, completos = 0;
@@ -64,9 +70,11 @@ function DocumentosPanel() {
   );
 }
 
-function OrcamentosPanel() {
-  const { data: orcs = [] } = useOrcamentos();
+function OrcamentosPanel({ period }: { period: ExecutivePeriod }) {
+  const { data: allOrcs = [] } = useOrcamentos();
   const c = useMemo(() => {
+    const { ini, fim } = periodoRange(period);
+    const orcs = allOrcs.filter(o => { const d = (o.created_at || '').slice(0, 10); return d >= ini && d <= fim; });
     let criados = orcs.length, aprovados = 0, rejeitados = 0, analise = 0, parados = 0;
     for (const o of orcs) {
       if (o.status === 'aprovado') aprovados++;
@@ -77,7 +85,7 @@ function OrcamentosPanel() {
       }
     }
     return { criados, aprovados, rejeitados, analise, parados };
-  }, [orcs]);
+  }, [allOrcs, period]);
 
   return (
     <Card className="min-w-0 overflow-hidden">
@@ -97,14 +105,14 @@ function OrcamentosPanel() {
 }
 
 // Página 4 — Operação: "Onde a operação está travando?"
-export default function OperationsPage() {
+export default function OperationsPage({ period }: { period: ExecutivePeriod }) {
   return (
     <>
       <DirectorFilterBar />
-      <PipelineGargalos />
+      <PipelineGargalos period={period} />
       <div className="grid gap-3 lg:grid-cols-2">
-        <DocumentosPanel />
-        <OrcamentosPanel />
+        <DocumentosPanel period={period} />
+        <OrcamentosPanel period={period} />
       </div>
     </>
   );

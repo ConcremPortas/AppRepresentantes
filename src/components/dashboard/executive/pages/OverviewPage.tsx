@@ -77,7 +77,7 @@ export default function OverviewPage({ period, global }: { period: ExecutivePeri
         <StrategicActionsPanel period={period} limit={3} title="Ações do Dia" />
         <ReceitaTrendCard period={period} />
       </div>
-      {global && <PanoramaGlobal />}
+      {global && <PanoramaGlobal period={period} />}
     </>
   );
 }

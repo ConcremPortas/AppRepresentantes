@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { useAcompanhamento } from '@/hooks/useAcompanhamento';
 import { useDirectorFilters, applyPedidoFilters, PIPELINE_STAGES as STAGES } from './DirectorFilters';
 import { computeGargalos } from '@/utils/pipeline';
+import { periodoRange, type DashboardFiltros } from '@/services/dashboard';
 import { cn } from '@/utils/cn';
 
 function Gargalo({ icon: Icon, label, value, tone }: { icon: React.ElementType; label: string; value: number; tone: string }) {
@@ -20,12 +21,17 @@ function Gargalo({ icon: Icon, label, value, tone }: { icon: React.ElementType; 
 
 // Pipeline operacional (escopo do usuário): contagem por etapa + gargalos
 // (parados > 7 dias na etapa, atrasados vs embarque, docs pendentes em faturados+).
-export default function PipelineGargalos() {
+export default function PipelineGargalos({ period }: { period?: DashboardFiltros }) {
   const { data: all = [], isLoading } = useAcompanhamento();
   const { filters } = useDirectorFilters();
 
   // grupo/rep/UF filtram a esteira; a etapa apenas DESTACA (a esteira mostra a distribuição completa)
-  const pedidos = useMemo(() => applyPedidoFilters(all, filters, { ignoreStatus: true }), [all, filters]);
+  const pedidos = useMemo(() => {
+    const scoped = applyPedidoFilters(all, filters, { ignoreStatus: true });
+    if (!period) return scoped;
+    const { ini, fim } = periodoRange(period);
+    return scoped.filter(p => { const d = (p.data_emissao || '').slice(0, 10); return d >= ini && d <= fim; });
+  }, [all, filters, period]);
 
   const { counts, parados, atrasados, docs, max } = useMemo(() => {
     const g = computeGargalos(pedidos);

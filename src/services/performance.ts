@@ -30,7 +30,7 @@ function badgeDoScore(s: number): RepBadge {
 //   diretor  → só pedidos dos grupos vinculados (grupos != null)
 //   global   → todos (admin / diretor geral)
 //   outros   → [] (representante não usa este painel)
-export async function fetchRepPerformance(grupos: string[] | null, admin: boolean): Promise<RepPerf[]> {
+export async function fetchRepPerformance(grupos: string[] | null, admin: boolean, range?: { ini: string; fim: string } | null): Promise<RepPerf[]> {
   if (grupos == null && !admin) return [];
 
   let q = supabase
@@ -48,19 +48,24 @@ export async function fetchRepPerformance(grupos: string[] | null, admin: boolea
   // Agrega por rep: total, nº pedidos, última compra por CNPJ (p/ movimentação).
   type Acc = { total: number; pedidos: number; ultPorCnpj: Map<string, string>; ultimo: string };
   const map = new Map<string, Acc>();
+  const noPeriodo = (d: string) => !range || (d >= range.ini && d <= range.fim);
   for (const r of (data ?? []) as { representante: string; total_pedido_venda: number; cliente_cnpj: string; data_emissao: string }[]) {
     const rep = r.representante?.trim();
     if (!rep) continue;
     const e = map.get(rep) ?? { total: 0, pedidos: 0, ultPorCnpj: new Map<string, string>(), ultimo: '' };
-    e.total += r.total_pedido_venda ?? 0;
-    e.pedidos += 1;
     const cnpj = (r.cliente_cnpj ?? '').trim();
     const d = (r.data_emissao ?? '').slice(0, 10);
+    // Carteira e recência (movimentação): sempre todo o histórico
     if (cnpj && d) {
       const prev = e.ultPorCnpj.get(cnpj);
       if (!prev || d > prev) e.ultPorCnpj.set(cnpj, d);
     }
     if (d > e.ultimo) e.ultimo = d;
+    // Receita e nº de pedidos: apenas o período selecionado (se houver filtro)
+    if (noPeriodo(d)) {
+      e.total += r.total_pedido_venda ?? 0;
+      e.pedidos += 1;
+    }
     map.set(rep, e);
   }
 
@@ -117,7 +122,7 @@ export interface GroupPerf {
   pctReceita: number;          // participação % na receita do escopo
 }
 
-export async function fetchGroupPerformance(grupos: string[] | null, admin: boolean): Promise<GroupPerf[]> {
+export async function fetchGroupPerformance(grupos: string[] | null, admin: boolean, range?: { ini: string; fim: string } | null): Promise<GroupPerf[]> {
   if (grupos == null && !admin) return [];
 
   let q = supabase
@@ -133,15 +138,17 @@ export async function fetchGroupPerformance(grupos: string[] | null, admin: bool
 
   type Acc = { receita: number; pedidos: number; ultPorCnpj: Map<string, string>; reps: Set<string> };
   const map = new Map<string, Acc>();
+  const noPeriodo = (d: string) => !range || (d >= range.ini && d <= range.fim);
   for (const r of (data ?? []) as { grupo_cliente: string | null; total_pedido_venda: number; cliente_cnpj: string; representante: string; data_emissao: string }[]) {
     const g = (r.grupo_cliente ?? '').trim() || 'SEM GRUPO';
     const e = map.get(g) ?? { receita: 0, pedidos: 0, ultPorCnpj: new Map<string, string>(), reps: new Set<string>() };
-    e.receita += r.total_pedido_venda ?? 0;
-    e.pedidos += 1;
     const cnpj = (r.cliente_cnpj ?? '').trim();
     const d = (r.data_emissao ?? '').slice(0, 10);
+    // Carteira e recência: todo o histórico; representantes atuando: todo o histórico
     if (cnpj && d) { const prev = e.ultPorCnpj.get(cnpj); if (!prev || d > prev) e.ultPorCnpj.set(cnpj, d); }
     if (r.representante?.trim()) e.reps.add(r.representante.trim());
+    // Receita e nº de pedidos: apenas o período selecionado (se houver filtro)
+    if (noPeriodo(d)) { e.receita += r.total_pedido_venda ?? 0; e.pedidos += 1; }
     map.set(g, e);
   }
 

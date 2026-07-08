@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { useRepPerformance, useGroupPerformance } from '@/hooks/useRepPerformance';
 import { formatCurrencyK } from '@/utils/formatters';
 import { cn } from '@/utils/cn';
+import type { DashboardFiltros } from '@/services/dashboard';
 
 // Tons de verde para as fatias do 1º, 2º e 3º maiores grupos
 const SHADES = ['#059669', '#10b981', '#34d399'];
@@ -20,9 +21,9 @@ function Tile({ icon: Icon, label, value, tone }: { icon: React.ElementType; lab
 
 // Panorama global (Diretor Geral): receita total, grupos, representantes,
 // ticket global e concentração de receita nos 3 maiores grupos.
-export default function PanoramaGlobal() {
-  const { data: reps = [] } = useRepPerformance();
-  const { data: grupos = [], isLoading } = useGroupPerformance();
+export default function PanoramaGlobal({ period }: { period?: DashboardFiltros }) {
+  const { data: reps = [] } = useRepPerformance(period);
+  const { data: grupos = [], isLoading } = useGroupPerformance(period);
 
   const { receita, pedidos, ticket, top3, resto, top3List } = useMemo(() => {
     const receita = grupos.reduce((s, g) => s + g.receita, 0);

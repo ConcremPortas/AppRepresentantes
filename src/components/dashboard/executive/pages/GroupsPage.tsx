@@ -6,6 +6,7 @@ import { useGroupPerformance } from '@/hooks/useRepPerformance';
 import { formatCurrencyK } from '@/utils/formatters';
 import { cn } from '@/utils/cn';
 import type { GroupPerf } from '@/services/performance';
+import type { ExecutivePeriod } from '@/hooks/useExecutiveSummary';
 
 function Highlight({ icon: Icon, label, grupo, valor, tone }: { icon: React.ElementType; label: string; grupo: string; valor: string; tone: string }) {
   return (
@@ -21,8 +22,8 @@ function Highlight({ icon: Icon, label, grupo, valor, tone }: { icon: React.Elem
 }
 
 // Página 3 — Grupos: "Quais grupos sustentam o resultado e quais puxam para baixo?"
-export default function GroupsPage({ global }: { global?: boolean }) {
-  const { data: grupos = [] } = useGroupPerformance();
+export default function GroupsPage({ period, global }: { period: ExecutivePeriod; global?: boolean }) {
+  const { data: grupos = [] } = useGroupPerformance(period);
 
   const destaque = useMemo(() => {
     if (grupos.length === 0) return null;
@@ -43,7 +44,7 @@ export default function GroupsPage({ global }: { global?: boolean }) {
           <Highlight icon={Users} label="Mais clientes" grupo={destaque.byClientes.grupo} valor={`${destaque.byClientes.clientes} cliente(s)`} tone="bg-indigo-50 text-indigo-600" />
         </div>
       )}
-      <GroupPerformancePanel />
+      <GroupPerformancePanel period={period} />
       {global && <UFDistributionPanel />}
     </>
   );
