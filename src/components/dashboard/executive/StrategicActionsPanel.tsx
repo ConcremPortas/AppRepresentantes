@@ -22,23 +22,25 @@ export default function StrategicActionsPanel({ period, limit = 5, title = 'Plan
     const out: { prioridade: Prioridade; texto: string }[] = [];
 
     if (d.docs > 0)
-      out.push({ prioridade: 'alta', texto: `Priorizar ${d.docs} pedido(s) faturado(s) sem NF/boleto — destrava faturamento.` });
+      out.push({ prioridade: 'alta', texto: `Anexar documentos de ${d.docs} pedido(s) faturado(s) sem nota fiscal ou boleto — destrava o faturamento.` });
     if (d.clientesRisco > 0)
-      out.push({ prioridade: d.clientesRisco > d.ativos ? 'alta' : 'media', texto: `Cobrar plano de contato para ${d.clientesRisco} cliente(s) com recompra atrasada.` });
+      out.push({ prioridade: d.clientesRisco > d.ativos ? 'alta' : 'media', texto: `Cobrar contato com ${d.clientesRisco} cliente(s) sem comprar há +30 dias${d.dormentes > 0 ? ` (${d.dormentes} há +60 dias)` : ''}.` });
     if (d.orcParados > 0)
-      out.push({ prioridade: 'media', texto: `Revisar ${d.orcParados} orçamento(s) parado(s) há mais de 30 dias.` });
+      out.push({ prioridade: 'media', texto: `Dar retorno em ${d.orcParados} orçamento(s) enviado(s)/em análise parado(s) há +30 dias sem resposta.` });
 
     const grpRisco = [...grupos].sort((a, b) => (b.clientesAtrasados + b.clientesDormentes) - (a.clientesAtrasados + a.clientesDormentes))[0];
-    if (grpRisco && (grpRisco.clientesAtrasados + grpRisco.clientesDormentes) > 0)
-      out.push({ prioridade: 'media', texto: `Reforçar reativação no grupo ${grpRisco.grupo} (${grpRisco.clientesAtrasados + grpRisco.clientesDormentes} em atraso).` });
+    if (grpRisco && (grpRisco.clientesAtrasados + grpRisco.clientesDormentes) > 0) {
+      const totGrp = grpRisco.clientesAtrasados + grpRisco.clientesDormentes;
+      out.push({ prioridade: 'media', texto: `Reativar ${totGrp} cliente(s) do grupo ${grpRisco.grupo} sem comprar há +30 dias${grpRisco.clientesDormentes > 0 ? ` (${grpRisco.clientesDormentes} dormente[s])` : ''}.` });
+    }
 
     const criticos = reps.filter(r => r.badge === 'critico' || r.badge === 'atencao');
     if (criticos.length > 0) {
       const nomes = criticos.slice(0, 2).map(r => r.representante.split(' - ').pop()?.split(' ')[0] ?? r.representante).join(', ');
-      out.push({ prioridade: 'baixa', texto: `Avaliar ${criticos.length} representante(s) com performance abaixo da média (${nomes}${criticos.length > 2 ? '…' : ''}).` });
+      out.push({ prioridade: 'baixa', texto: `Acompanhar ${criticos.length} representante(s) com score baixo e carteira em atraso (${nomes}${criticos.length > 2 ? '…' : ''}).` });
     }
     if (d.pendencias > 0)
-      out.push({ prioridade: 'baixa', texto: `Acompanhar ${d.pendencias} pedido(s) parado(s)/atrasado(s) na operação.` });
+      out.push({ prioridade: 'baixa', texto: `Destravar ${d.pendencias} pedido(s) parado(s) +7 dias na etapa ou com embarque vencido.` });
 
     if (out.length === 0)
       out.push({ prioridade: 'baixa', texto: 'Indicadores saudáveis — manter cadência comercial e de contato.' });
