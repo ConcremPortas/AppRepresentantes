@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UsersRound, X, ShoppingCart, DollarSign, UserCheck, AlertTriangle, Moon, Award, CalendarClock, ChevronLeft, ChevronRight } from 'lucide-react';
+import { UsersRound, X, ShoppingCart, DollarSign, UserCheck, AlertTriangle, Moon, Award, CalendarClock, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { useRepPerformance } from '@/hooks/useRepPerformance';
 import { formatCurrencyK, formatDate } from '@/utils/formatters';
@@ -79,7 +79,10 @@ export default function RepPerformancePanel() {
             <UsersRound className="w-4 h-4 text-indigo-500" />
             <CardTitle>Performance dos Representantes</CardTitle>
           </div>
-          <div className="flex items-center gap-1 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400 mr-0.5">
+              <ArrowUpDown className="w-3 h-3" />Ordenar por
+            </span>
             {CRITERIOS.map(c => (
               <button key={c.key} type="button" onClick={() => setCriterio(c.key)}
                 className={cn('text-[11px] font-medium px-2 py-1 rounded-full border transition-colors',
@@ -149,7 +152,7 @@ export default function RepPerformancePanel() {
                     <th className="px-3 py-2">Score</th>
                     <th className="px-3 py-2 text-right">Receita</th>
                     <th className="px-3 py-2 text-center">Pedidos</th>
-                    <th className="px-3 py-2 text-center" title="Ativos / Atrasados / Dormentes">Clientes</th>
+                    <th className="px-3 py-2 text-center" title="Ativos: compraram nos últimos 30 dias · Em risco: sem comprar há +30 dias">Clientes</th>
                     <th className="px-3 py-2 text-right">Ticket</th>
                   </tr>
                 </thead>
@@ -170,12 +173,19 @@ export default function RepPerformancePanel() {
                         </div>
                       </td>
                       <td className="px-3 py-2 text-center tabular-nums text-gray-600">{r.pedidos}</td>
-                      <td className="px-3 py-2 text-center tabular-nums text-[11px]">
-                        <span className="text-emerald-600 font-semibold">{r.clientesAtivos}</span>
-                        <span className="text-gray-300"> · </span>
-                        <span className="text-red-500 font-semibold">{r.clientesAtrasados}</span>
-                        <span className="text-gray-300"> · </span>
-                        <span className="text-gray-400 font-semibold">{r.clientesDormentes}</span>
+                      <td className="px-3 py-2 text-[11px]" title={`${r.clientesAtrasados} atrasado(s) 31–60d · ${r.clientesDormentes} dormente(s) +60d`}>
+                        <div className="flex items-center justify-center gap-3">
+                          <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold whitespace-nowrap">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />{r.clientesAtivos} ativos
+                          </span>
+                          {(r.clientesAtrasados + r.clientesDormentes) > 0 ? (
+                            <span className="inline-flex items-center gap-1 text-red-500 font-semibold whitespace-nowrap">
+                              <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />{r.clientesAtrasados + r.clientesDormentes} em risco
+                            </span>
+                          ) : (
+                            <span className="text-gray-300">sem risco</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums text-gray-700">{formatCurrencyK(r.ticketMedio)}</td>
                     </tr>
@@ -186,7 +196,7 @@ export default function RepPerformancePanel() {
 
             {/* Rodapé: legenda + paginação */}
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 mt-3 px-1">
-              <p className="text-[10px] text-gray-400">Clientes: <span className="text-emerald-600">ativos</span> · <span className="text-red-500">atrasados</span> · <span className="text-gray-400">dormentes</span>. Clique numa linha para o detalhe.</p>
+              <p className="text-[10px] text-gray-400">Clique numa linha para ver o detalhe completo do representante (inclui atrasados e dormentes separados).</p>
               {ordenados.length > PAGE_SIZE && (
                 <div className="flex items-center gap-2 ml-auto">
                   <span className="text-[11px] text-gray-400 tabular-nums">{primeiro}–{ultimo} de {ordenados.length}</span>
