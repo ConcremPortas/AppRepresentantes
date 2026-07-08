@@ -12,8 +12,8 @@ const PRIO: Record<Prioridade, string> = {
   baixa: 'bg-blue-50 text-blue-600',
 };
 
-// "Plano de Ação Sugerido": até 5 ações objetivas geradas dos indicadores reais.
-export default function StrategicActionsPanel({ period }: { period: ExecutivePeriod }) {
+// "Plano de Ação Sugerido": ações objetivas geradas dos indicadores reais.
+export default function StrategicActionsPanel({ period, limit = 5, title = 'Plano de Ação Sugerido' }: { period: ExecutivePeriod; limit?: number; title?: string }) {
   const d = useExecutiveSummary(period);
   const { data: reps = [] } = useRepPerformance();
   const { data: grupos = [] } = useGroupPerformance();
@@ -43,15 +43,15 @@ export default function StrategicActionsPanel({ period }: { period: ExecutivePer
     if (out.length === 0)
       out.push({ prioridade: 'baixa', texto: 'Indicadores saudáveis — manter cadência comercial e de contato.' });
 
-    return out.slice(0, 5);
-  }, [d, reps, grupos]);
+    return out.slice(0, limit);
+  }, [d, reps, grupos, limit]);
 
   return (
     <Card className="min-w-0 overflow-hidden">
       <CardHeader>
         <div className="flex items-center gap-2">
           <ClipboardList className="w-4 h-4 text-emerald-500" />
-          <CardTitle>Plano de Ação Sugerido</CardTitle>
+          <CardTitle>{title}</CardTitle>
         </div>
       </CardHeader>
       <CardContent>
