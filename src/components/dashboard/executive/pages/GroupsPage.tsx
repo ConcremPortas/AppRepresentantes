@@ -45,7 +45,7 @@ export default function GroupsPage({ period, global }: { period: ExecutivePeriod
         </div>
       )}
       <GroupPerformancePanel period={period} />
-      {global && <UFDistributionPanel />}
+      {global && <UFDistributionPanel period={period} />}
     </>
   );
 }
