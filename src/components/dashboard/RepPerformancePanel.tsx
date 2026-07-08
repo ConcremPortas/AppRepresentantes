@@ -56,6 +56,12 @@ export default function RepPerformancePanel() {
   const ordenados = useMemo(() => ordenar(reps, criterio), [reps, criterio]);
   const top = ordenados.slice(0, 3);
   const maxRec = Math.max(1, ...reps.map(r => r.totalVendido));
+  // Atenção Necessária: piores por score entre os que têm sinal de risco
+  const atencao = useMemo(
+    () => reps.filter(r => r.badge === 'critico' || r.badge === 'atencao' || (r.clientesAtrasados + r.clientesDormentes) > 0)
+             .sort((a, b) => a.score - b.score).slice(0, 3),
+    [reps],
+  );
 
   // Paginação da matriz — volta à 1ª página ao trocar a ordenação
   useEffect(() => { setPage(0); }, [criterio]);
@@ -91,7 +97,8 @@ export default function RepPerformancePanel() {
           <p className="text-sm text-gray-400 py-10 text-center">Nenhum representante com pedidos no seu escopo.</p>
         ) : (
           <>
-            {/* Top 3 — cards de destaque */}
+            {/* Top Performance */}
+            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">Top Performance</p>
             <div className="grid sm:grid-cols-3 gap-2.5 mb-4">
               {top.map((r, i) => (
                 <button key={r.representante} type="button" onClick={() => setSel(r)}
@@ -109,6 +116,29 @@ export default function RepPerformancePanel() {
                 </button>
               ))}
             </div>
+
+            {/* Atenção Necessária */}
+            {atencao.length > 0 && (
+              <>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">Atenção Necessária</p>
+                <div className="grid sm:grid-cols-3 gap-2.5 mb-4">
+                  {atencao.map(r => {
+                    const risco = r.clientesAtrasados + r.clientesDormentes;
+                    return (
+                      <button key={r.representante} type="button" onClick={() => setSel(r)}
+                        className="text-left rounded-2xl border border-red-100 bg-red-50/40 p-3 hover:shadow-md transition-shadow min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className={cn('text-[9px] font-semibold px-1.5 py-0.5 rounded-full border', BADGE[r.badge].cls)}>{BADGE[r.badge].label}</span>
+                          <span className="text-[10px] font-bold text-gray-400 tabular-nums">score {r.score}</span>
+                        </div>
+                        <p className="text-[13px] font-semibold text-gray-900 truncate mt-1">{r.representante}</p>
+                        <p className="text-xs font-medium text-red-600 mt-1">{risco > 0 ? `${risco} cliente(s) em atraso` : 'performance abaixo da média'}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
 
             {/* Matriz completa */}
             <div className="overflow-x-auto -mx-1">

@@ -14,6 +14,8 @@ import FilteredKPIStrip from '@/components/dashboard/FilteredKPIStrip';
 import PanoramaGlobal from '@/components/dashboard/PanoramaGlobal';
 import UFDistributionPanel from '@/components/dashboard/UFDistributionPanel';
 import RiskPanel from '@/components/dashboard/RiskPanel';
+import DirectorExecutiveDashboard from '@/components/dashboard/DirectorExecutiveDashboard';
+import GeneralDirectorExecutiveDashboard from '@/components/dashboard/GeneralDirectorExecutiveDashboard';
 import { useOrcamentos } from '@/hooks/useOrcamentos';
 import { useCarteira } from '@/hooks/useCarteira';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
@@ -733,6 +735,13 @@ export default function DashboardPage() {
     rejeitado:  { pill: 'bg-red-50 text-red-700 border-red-200',       label: 'Rejeitado',  dot: '#ef4444' },
   };
 
+  // ── Roteador por perfil ──────────────────────────────────────────────────
+  // Diretor / Diretor Geral: Sala de Comando Gerencial (página executiva dedicada).
+  // Representante / Operador / Admin: dashboard operacional abaixo (inalterado).
+  if (isDiretor) {
+    return isGeral ? <GeneralDirectorExecutiveDashboard /> : <DirectorExecutiveDashboard />;
+  }
+
   return (
     <PageContainer space="lg">
 
@@ -953,31 +962,6 @@ export default function DashboardPage() {
           )}
         </div>
       </Reveal>
-
-      {/* ── Central Executiva (diretor / diretor geral) ── */}
-      {isDiretor && (
-        <DirectorFiltersProvider>
-          {/* Visão global (apenas Diretor Geral) */}
-          {isGeral && <Reveal delay={0.01}><PanoramaGlobal /></Reveal>}
-          {isGeral && (
-            <Reveal delay={0.015}>
-              <div className="grid gap-3 lg:grid-cols-2">
-                <UFDistributionPanel />
-                <RiskPanel />
-              </div>
-            </Reveal>
-          )}
-          {/* Visão geral */}
-          <Reveal delay={0.02}><CommercialInsightsPanel /></Reveal>
-          <Reveal delay={0.04}><RepPerformancePanel /></Reveal>
-          <Reveal delay={0.06}><DirectorFunnel /></Reveal>
-          <Reveal delay={0.07}><GroupPerformancePanel /></Reveal>
-          {/* Visão operacional (filtrável) */}
-          <Reveal delay={0.08}><DirectorFilterBar /></Reveal>
-          <Reveal delay={0.10}><FilteredKPIStrip /></Reveal>
-          <Reveal delay={0.12}><PipelineGargalos /></Reveal>
-        </DirectorFiltersProvider>
-      )}
 
       {/* ── Atividade (heatmap) + Top Representantes (admin) ── */}
       <Reveal delay={0.05}>
