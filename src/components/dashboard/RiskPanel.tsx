@@ -18,8 +18,25 @@ function RiskKpi({ icon: Icon, label, value, tone }: { icon: React.ElementType; 
   );
 }
 
+function FocoList({ titulo, itens }: { titulo: string; itens: { nome: string; atraso: number }[] }) {
+  if (itens.length === 0) return null;
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">{titulo}</p>
+      <div className="space-y-1.5">
+        {itens.map((f, i) => (
+          <div key={i} className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 px-3 py-1.5 min-w-0">
+            <span className="text-[13px] text-gray-700 truncate">{f.nome}</span>
+            <span className="text-xs font-bold text-red-500 tabular-nums flex-shrink-0">{f.atraso}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // Painel de risco consolidado (Diretor Geral): gargalos operacionais +
-// carteira dormente + focos de atenção (reps e grupos com maior atraso).
+// carteira dormente + focos de atenção (grupos e reps com mais clientes parados).
 export default function RiskPanel() {
   const { data: pedidos = [], isLoading } = useAcompanhamento();
   const { data: reps = [] } = useRepPerformance();
@@ -30,18 +47,18 @@ export default function RiskPanel() {
   const dormentes = useMemo(() => reps.reduce((s, r) => s + r.clientesDormentes, 0), [reps]);
   const repsCriticos = useMemo(() => reps.filter(r => r.badge === 'critico').length, [reps]);
 
-  const focos = useMemo(() => {
-    const repFocos = [...reps]
-      .map(r => ({ nome: r.representante, atraso: r.clientesAtrasados + r.clientesDormentes, tipo: 'Representante' as const }))
+  const { gruposFoco, repsFoco } = useMemo(() => {
+    const repsFoco = [...reps]
+      .map(r => ({ nome: r.representante, atraso: r.clientesAtrasados + r.clientesDormentes }))
       .filter(f => f.atraso > 0)
       .sort((a, b) => b.atraso - a.atraso)
-      .slice(0, 3);
-    const grpFocos = [...grupos]
-      .map(g => ({ nome: g.grupo, atraso: g.clientesAtrasados + g.clientesDormentes, tipo: 'Grupo' as const }))
+      .slice(0, 4);
+    const gruposFoco = [...grupos]
+      .map(g => ({ nome: g.grupo, atraso: g.clientesAtrasados + g.clientesDormentes }))
       .filter(f => f.atraso > 0)
       .sort((a, b) => b.atraso - a.atraso)
-      .slice(0, 3);
-    return [...repFocos, ...grpFocos].sort((a, b) => b.atraso - a.atraso).slice(0, 5);
+      .slice(0, 4);
+    return { gruposFoco, repsFoco };
   }, [reps, grupos]);
 
   return (
@@ -65,19 +82,13 @@ export default function RiskPanel() {
               <RiskKpi icon={UserX}         label="Reps críticos"        value={repsCriticos} tone="bg-rose-50 text-rose-500" />
             </div>
 
-            {focos.length > 0 && (
+            {(gruposFoco.length > 0 || repsFoco.length > 0) && (
               <div className="mt-4">
-                <p className="text-[11px] font-semibold text-gray-500 mb-2">Focos de atenção</p>
-                <div className="space-y-1.5">
-                  {focos.map((f, i) => (
-                    <div key={`${f.tipo}-${f.nome}-${i}`} className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 px-3 py-1.5">
-                      <span className="flex items-center gap-2 min-w-0">
-                        <span className="text-[9px] font-bold uppercase tracking-wide text-gray-400 bg-gray-100 rounded px-1.5 py-0.5 flex-shrink-0">{f.tipo}</span>
-                        <span className="text-[13px] text-gray-700 truncate">{f.nome}</span>
-                      </span>
-                      <span className="text-xs font-bold text-red-500 tabular-nums flex-shrink-0">{f.atraso} clientes sem comprar +30d</span>
-                    </div>
-                  ))}
+                <p className="text-[11px] font-semibold text-gray-500 mb-1">Focos de atenção — clientes sem comprar há +30 dias</p>
+                <p className="text-[10px] text-gray-400 mb-2.5">Vistos por duas óticas separadas. O nº em vermelho é a quantidade de clientes; um mesmo cliente conta no seu grupo e no seu representante.</p>
+                <div className="grid sm:grid-cols-2 gap-x-4 gap-y-3">
+                  <FocoList titulo="Por grupo" itens={gruposFoco} />
+                  <FocoList titulo="Por representante" itens={repsFoco} />
                 </div>
               </div>
             )}
