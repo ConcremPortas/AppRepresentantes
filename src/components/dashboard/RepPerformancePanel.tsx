@@ -136,7 +136,7 @@ export default function RepPerformancePanel({ period }: { period?: DashboardFilt
                           <span className="text-[10px] font-bold text-gray-400 tabular-nums">score {r.score}</span>
                         </div>
                         <p className="text-[13px] font-semibold text-gray-900 truncate mt-1">{r.representante}</p>
-                        <p className="text-xs font-medium text-red-600 mt-1">{risco > 0 ? `${risco} cliente(s) em atraso` : 'performance abaixo da média'}</p>
+                        <p className="text-xs font-medium text-red-600 mt-1">{risco > 0 ? `${risco} cliente(s) sem comprar +30d` : 'performance abaixo da média'}</p>
                       </button>
                     );
                   })}

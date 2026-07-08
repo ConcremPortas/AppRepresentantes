@@ -45,7 +45,7 @@ export default function GroupPerformancePanel({ period }: { period?: DashboardFi
                   <span className="inline-flex items-center gap-1"><DollarSign className="w-3 h-3 text-gray-400" />{formatCurrencyK(g.ticketMedio)} ticket</span>
                   <span className="inline-flex items-center gap-1"><Briefcase className="w-3 h-3 text-gray-400" />{g.representantes} rep.</span>
                   {(g.clientesAtrasados + g.clientesDormentes) > 0 && (
-                    <span className="inline-flex items-center gap-1 text-red-500 font-medium"><AlertTriangle className="w-3 h-3" />{g.clientesAtrasados + g.clientesDormentes} em atraso</span>
+                    <span className="inline-flex items-center gap-1 text-red-500 font-medium" title={`${g.clientesAtrasados} atrasado(s) 31–60d · ${g.clientesDormentes} dormente(s) +60d`}><AlertTriangle className="w-3 h-3" />{g.clientesAtrasados + g.clientesDormentes} clientes sem comprar +30d</span>
                   )}
                 </div>
               </div>

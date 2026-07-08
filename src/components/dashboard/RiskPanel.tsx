@@ -75,7 +75,7 @@ export default function RiskPanel() {
                         <span className="text-[9px] font-bold uppercase tracking-wide text-gray-400 bg-gray-100 rounded px-1.5 py-0.5 flex-shrink-0">{f.tipo}</span>
                         <span className="text-[13px] text-gray-700 truncate">{f.nome}</span>
                       </span>
-                      <span className="text-xs font-bold text-red-500 tabular-nums flex-shrink-0">{f.atraso} em atraso</span>
+                      <span className="text-xs font-bold text-red-500 tabular-nums flex-shrink-0">{f.atraso} clientes sem comprar +30d</span>
                     </div>
                   ))}
                 </div>
