@@ -21,12 +21,13 @@ export default function PanoramaGlobal() {
   const { data: reps = [] } = useRepPerformance();
   const { data: grupos = [], isLoading } = useGroupPerformance();
 
-  const { receita, pedidos, ticket, top3, resto } = useMemo(() => {
+  const { receita, pedidos, ticket, top3, resto, top3List } = useMemo(() => {
     const receita = grupos.reduce((s, g) => s + g.receita, 0);
     const pedidos = grupos.reduce((s, g) => s + g.pedidos, 0);
     const ordenados = [...grupos].sort((a, b) => b.receita - a.receita);
-    const top3 = ordenados.slice(0, 3).reduce((s, g) => s + g.pctReceita, 0);
-    return { receita, pedidos, ticket: pedidos ? receita / pedidos : 0, top3, resto: Math.max(0, 100 - top3) };
+    const top3List = ordenados.slice(0, 3);
+    const top3 = top3List.reduce((s, g) => s + g.pctReceita, 0);
+    return { receita, pedidos, ticket: pedidos ? receita / pedidos : 0, top3, resto: Math.max(0, 100 - top3), top3List };
   }, [grupos]);
 
   return (
@@ -60,9 +61,20 @@ export default function PanoramaGlobal() {
                   <div className="h-full bg-emerald-500 transition-all duration-700" style={{ width: `${top3}%` }} title={`Top 3 grupos: ${top3.toFixed(0)}%`} />
                   <div className="h-full bg-gray-300 transition-all duration-700" style={{ width: `${resto}%` }} title={`Demais grupos: ${resto.toFixed(0)}%`} />
                 </div>
-                <div className="flex items-center gap-4 mt-1.5 text-[10px] text-gray-400">
-                  <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" />3 maiores grupos</span>
-                  <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-300" />demais</span>
+                {/* Quais são os 3 maiores grupos */}
+                <div className="mt-2 space-y-1">
+                  {top3List.map((g, i) => (
+                    <div key={g.grupo} className="flex items-center gap-2 min-w-0">
+                      <span className="w-4 h-4 rounded-md bg-emerald-500 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
+                      <span className="text-[11px] font-medium text-gray-700 truncate">{g.grupo}</span>
+                      <span className="text-[10px] text-gray-400 tabular-nums ml-auto flex-shrink-0">{g.pctReceita.toFixed(0)}% · {formatCurrencyK(g.receita)}</span>
+                    </div>
+                  ))}
+                  <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                    <span className="w-4 h-4 rounded-md bg-gray-300 flex-shrink-0" />
+                    <span>Demais {Math.max(0, grupos.length - 3)} grupo(s)</span>
+                    <span className="ml-auto tabular-nums">{resto.toFixed(0)}%</span>
+                  </div>
                 </div>
               </div>
             )}
