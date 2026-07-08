@@ -20,7 +20,7 @@ const PAGE_SIZE = 8;
 type Criterio = 'score' | 'receita' | 'pedidos' | 'ticket' | 'ativos' | 'atraso';
 const CRITERIOS: { key: Criterio; label: string }[] = [
   { key: 'score',   label: 'Score' },
-  { key: 'receita', label: 'Receita' },
+  { key: 'receita', label: 'Valor' },
   { key: 'pedidos', label: 'Pedidos' },
   { key: 'ticket',  label: 'Ticket' },
   { key: 'ativos',  label: 'Ativos' },
@@ -151,7 +151,7 @@ export default function RepPerformancePanel({ period }: { period?: DashboardFilt
                   <tr className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wider border-b border-gray-100">
                     <th className="px-3 py-2">Representante</th>
                     <th className="px-3 py-2">Score</th>
-                    <th className="px-3 py-2 text-right">Receita</th>
+                    <th className="px-3 py-2 text-right">Valor</th>
                     <th className="px-3 py-2 text-center">Pedidos</th>
                     <th className="px-3 py-2 text-center" title="Ativos: compraram nos últimos 30 dias · Em risco: sem comprar há +30 dias">Clientes</th>
                     <th className="px-3 py-2 text-right">Ticket</th>
@@ -248,7 +248,7 @@ export default function RepPerformancePanel({ period }: { period?: DashboardFilt
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <Metric icon={DollarSign} label="Receita" value={formatCurrencyK(sel.totalVendido)} tone="text-emerald-700" />
+                  <Metric icon={DollarSign} label="Valor" value={formatCurrencyK(sel.totalVendido)} tone="text-emerald-700" />
                   <Metric icon={ShoppingCart} label="Pedidos" value={String(sel.pedidos)} />
                   <Metric icon={DollarSign} label="Ticket médio" value={formatCurrencyK(sel.ticketMedio)} />
                   <Metric icon={UsersRound} label="Clientes" value={String(sel.clientes)} />

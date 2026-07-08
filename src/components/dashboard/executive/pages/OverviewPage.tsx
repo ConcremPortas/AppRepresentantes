@@ -20,14 +20,14 @@ function ReceitaTrendCard({ period }: { period: ExecutivePeriod }) {
       <CardHeader>
         <div className="flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-emerald-500" />
-          <CardTitle>Tendência de Receita</CardTitle>
+          <CardTitle>Tendência de Valor</CardTitle>
         </div>
       </CardHeader>
       <CardContent>
         <div className="flex items-end justify-between gap-2 mb-1">
           <div>
             <p className="text-2xl font-bold text-gray-900 tabular-nums leading-none">{formatCurrencyK(d.receita)}</p>
-            <p className="text-[11px] text-gray-400 mt-1">receita do período</p>
+            <p className="text-[11px] text-gray-400 mt-1">valor do período</p>
           </div>
           <Delta value={d.receitaDelta} />
         </div>
@@ -43,7 +43,7 @@ function ReceitaTrendCard({ period }: { period: ExecutivePeriod }) {
               <XAxis dataKey="mes" tick={{ fontSize: 10, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
               <Tooltip
                 cursor={{ stroke: '#10b981', strokeWidth: 1 }}
-                formatter={(v) => [formatCurrency(typeof v === 'number' ? v : Number(v) || 0), 'Receita']}
+                formatter={(v) => [formatCurrency(typeof v === 'number' ? v : Number(v) || 0), 'Valor']}
                 contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb', fontSize: 12 }}
               />
               <Area type="monotone" dataKey="valor" stroke="#10b981" strokeWidth={2} fill="url(#execReceita)">

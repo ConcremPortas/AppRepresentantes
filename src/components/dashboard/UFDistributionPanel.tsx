@@ -55,7 +55,7 @@ export default function UFDistributionPanel({ period }: { period?: DashboardFilt
             <p className="text-[11px] text-gray-400 mb-3 leading-snug">
               Faturamento por <strong className="text-gray-500">estado do cliente</strong> no período.
               A <span className="text-emerald-600">barra</span> mostra o tamanho em relação ao maior estado;
-              o <strong className="text-gray-500">%</strong> é a participação na receita total.
+              o <strong className="text-gray-500">%</strong> é a participação no valor total.
             </p>
             <div className="space-y-2.5">
               {linhas.slice(0, 12).map(l => {

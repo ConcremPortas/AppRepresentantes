@@ -38,7 +38,7 @@ export default function FilteredKPIStrip() {
         {active > 0 && <span className="text-[10px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">filtrado · {count} pedido(s)</span>}
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-        <Kpi icon={DollarSign}   label="Receita"       value={isLoading ? '…' : formatCurrencyK(receita)} tone="bg-emerald-50 text-emerald-600" />
+        <Kpi icon={DollarSign}   label="Valor"         value={isLoading ? '…' : formatCurrencyK(receita)} tone="bg-emerald-50 text-emerald-600" />
         <Kpi icon={ShoppingCart} label="Pedidos"       value={isLoading ? '…' : count.toLocaleString('pt-BR')} tone="bg-amber-50 text-amber-600" />
         <Kpi icon={TrendingUp}   label="Ticket médio"  value={isLoading ? '…' : formatCurrencyK(ticket)} tone="bg-blue-50 text-blue-600" />
         <Kpi icon={Users}        label="Clientes"      value={isLoading ? '…' : clientes.toLocaleString('pt-BR')} tone="bg-indigo-50 text-indigo-600" />

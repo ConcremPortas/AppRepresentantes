@@ -26,8 +26,8 @@ export default function ManagementDiagnosis({ period }: { period: ExecutivePerio
     const resultado = rd === null
       ? { tone: 'info' as Tone, titulo: 'Resultado', texto: 'Sem base comparável no período anterior.' }
       : rd >= 0
-        ? { tone: 'bom' as Tone, titulo: 'Resultado', texto: `Receita em crescimento de ${rd.toFixed(1)}% vs período anterior.` }
-        : { tone: 'critico' as Tone, titulo: 'Resultado', texto: `Receita em queda de ${Math.abs(rd).toFixed(1)}% vs período anterior.` };
+        ? { tone: 'bom' as Tone, titulo: 'Resultado', texto: `Valor em crescimento de ${rd.toFixed(1)}% vs período anterior.` }
+        : { tone: 'critico' as Tone, titulo: 'Resultado', texto: `Valor em queda de ${Math.abs(rd).toFixed(1)}% vs período anterior.` };
 
     // Atenção
     const atencao = d.clientesRisco > 0
@@ -52,7 +52,7 @@ export default function ManagementDiagnosis({ period }: { period: ExecutivePerio
       const totReativa = reativa.clientesAtrasados + reativa.clientesDormentes;
       oportunidade = totReativa > 0
         ? { tone: 'atencao', titulo: 'Oportunidade', texto: `Grupo ${reativa.grupo} tem ${totReativa} cliente(s) para reativar.` }
-        : { tone: 'bom', titulo: 'Oportunidade', texto: `Grupo ${lider.grupo} lidera com ${lider.pctReceita.toFixed(0)}% da receita.` };
+        : { tone: 'bom', titulo: 'Oportunidade', texto: `Grupo ${lider.grupo} lidera com ${lider.pctReceita.toFixed(0)}% do valor.` };
     }
 
     return [resultado, atencao, gargalo, oportunidade];

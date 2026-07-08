@@ -560,7 +560,7 @@ function ClienteIntel({ cliente, onBack }: { cliente: ClienteCarteira; onBack: (
         <>
           {/* ── KPIs do cliente ── */}
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-            <StatTile icon={DollarSign} label="Receita total" value={fmtVolume(a.receita)} tone="text-emerald-700"
+            <StatTile icon={DollarSign} label="Valor total" value={fmtVolume(a.receita)} tone="text-emerald-700"
               sub={a.receita > 0 ? formatCurrency(a.receita) : 'sem valor registrado'} />
             <StatTile icon={ShoppingCart} label="Pedidos" value={String(a.totalPedidos)}
               sub={a.intervaloMedio ? `a cada ~${Math.round(a.intervaloMedio)} dias` : 'frequência indisponível'} />

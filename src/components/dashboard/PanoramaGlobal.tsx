@@ -49,7 +49,7 @@ export default function PanoramaGlobal({ period }: { period?: DashboardFiltros }
         ) : (
           <>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-              <Tile icon={DollarSign} label="Receita total"    value={formatCurrencyK(receita)}            tone="bg-emerald-50 text-emerald-600" />
+              <Tile icon={DollarSign} label="Valor total"      value={formatCurrencyK(receita)}            tone="bg-emerald-50 text-emerald-600" />
               <Tile icon={Layers}     label="Grupos ativos"    value={grupos.length.toLocaleString('pt-BR')} tone="bg-indigo-50 text-indigo-600" />
               <Tile icon={Briefcase}  label="Representantes"    value={reps.length.toLocaleString('pt-BR')}   tone="bg-blue-50 text-blue-600" />
               <Tile icon={DollarSign} label="Ticket médio"      value={formatCurrencyK(ticket)}             tone="bg-amber-50 text-amber-600" />
@@ -58,7 +58,7 @@ export default function PanoramaGlobal({ period }: { period?: DashboardFiltros }
             {grupos.length > 0 && (
               <div className="mt-4">
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500"><PieChart className="w-3.5 h-3.5" />Concentração de receita</span>
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500"><PieChart className="w-3.5 h-3.5" />Concentração de valor</span>
                   <span className="text-xs font-bold text-gray-700 tabular-nums">Top 3 · {top3.toFixed(0)}%</span>
                 </div>
                 {/* Barra segmentada: cada grupo é uma fatia proporcional, dividida por | */}
