@@ -1,5 +1,5 @@
 import { TrendingUp } from 'lucide-react';
-import { AreaChart, Area, ResponsiveContainer, XAxis, Tooltip } from 'recharts';
+import { AreaChart, Area, ResponsiveContainer, XAxis, Tooltip, LabelList } from 'recharts';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import ExecutiveSummary from '@/components/dashboard/executive/ExecutiveSummary';
 import ManagementDiagnosis from '@/components/dashboard/executive/ManagementDiagnosis';
@@ -31,9 +31,9 @@ function ReceitaTrendCard({ period }: { period: ExecutivePeriod }) {
           </div>
           <Delta value={d.receitaDelta} />
         </div>
-        <div className="h-28 -mx-1 mt-2">
+        <div className="h-32 -mx-1 mt-2">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={serie} margin={{ top: 6, right: 6, left: 6, bottom: 0 }}>
+            <AreaChart data={serie} margin={{ top: 20, right: 10, left: 10, bottom: 0 }}>
               <defs>
                 <linearGradient id="execReceita" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#10b981" stopOpacity={0.35} />
@@ -46,7 +46,15 @@ function ReceitaTrendCard({ period }: { period: ExecutivePeriod }) {
                 formatter={(v) => [formatCurrency(typeof v === 'number' ? v : Number(v) || 0), 'Receita']}
                 contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb', fontSize: 12 }}
               />
-              <Area type="monotone" dataKey="valor" stroke="#10b981" strokeWidth={2} fill="url(#execReceita)" />
+              <Area type="monotone" dataKey="valor" stroke="#10b981" strokeWidth={2} fill="url(#execReceita)">
+                <LabelList
+                  dataKey="valor"
+                  position="top"
+                  offset={8}
+                  formatter={(v: unknown) => formatCurrencyK(typeof v === 'number' ? v : Number(v) || 0)}
+                  style={{ fontSize: 10, fontWeight: 700, fill: '#374151' }}
+                />
+              </Area>
             </AreaChart>
           </ResponsiveContainer>
         </div>
