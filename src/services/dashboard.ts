@@ -75,9 +75,9 @@ export function periodoRange(filtros: DashboardFiltros = {}): { ini: string; fim
   const now = new Date();
   const ano = filtros.ano ?? now.getFullYear();
   if (periodo === 'trimestre') {
-    const t = filtros.trimestre ?? (Math.floor(now.getMonth() / 3) + 1);
-    const q = (t - 1) * 3;
-    return { ini: startOf(ano, q), fim: endOf(ano, q + 2) };
+    // Últimos 3 meses (janela móvel) terminando no mês atual (dezembro, se ano passado).
+    const mFim = ano === now.getFullYear() ? now.getMonth() : 11;
+    return { ini: startOf(ano, mFim - 2), fim: endOf(ano, mFim) };
   }
   if (periodo === 'ano') {
     return { ini: startOf(ano, 0), fim: endOf(ano, 11) };
@@ -129,10 +129,10 @@ export async function fetchDashboardStats(
   // ── 2. Intervalo do período selecionado (e do período anterior) ──
   let mesIni: string, mesFim: string, mesAntIni: string, mesAntFim: string;
   if (periodo === 'trimestre') {
-    const t = filtros.trimestre ?? (Math.floor(now.getMonth() / 3) + 1); // 1-4
-    const q = (t - 1) * 3;                          // 0, 3, 6, 9
-    mesIni    = startOf(ano, q);      mesFim    = endOf(ano, q + 2);
-    mesAntIni = startOf(ano, q - 3);  mesAntFim = endOf(ano, q - 1);
+    // Últimos 3 meses (janela móvel) terminando no mês atual (dezembro, se ano passado).
+    const mFim = ano === now.getFullYear() ? now.getMonth() : 11;
+    mesIni    = startOf(ano, mFim - 2);  mesFim    = endOf(ano, mFim);
+    mesAntIni = startOf(ano, mFim - 5);  mesAntFim = endOf(ano, mFim - 3);
   } else if (periodo === 'ano') {
     mesIni    = startOf(ano, 0);      mesFim    = endOf(ano, 11);
     mesAntIni = startOf(ano - 1, 0);  mesAntFim = endOf(ano - 1, 11);
