@@ -10,6 +10,7 @@ export interface ClienteCarteira {
   cliente_uf: string;
   cliente_telefone: string;
   cliente_email: string | null;
+  grupo_cliente: string;   // normalizado; null/vazio → 'SEM GRUPO'
   total_pedidos: number;
   total_comprado: number;
   ultimo_pedido: string;   // data_emissao ISO (mais recente)
@@ -32,6 +33,7 @@ const CAMPOS = [
   'cliente_uf',
   'cliente_telefone',
   'cliente_email',
+  'grupo_cliente',
   'data_emissao',
   'total_pedido_venda',
 ].join(',');
@@ -77,6 +79,7 @@ export async function fetchCarteira(params: FetchCarteiraParams): Promise<Client
         cliente_uf:       (row.cliente_uf as string) ?? '',
         cliente_telefone: (row.cliente_telefone as string) ?? '',
         cliente_email:    (row.cliente_email as string | null) ?? null,
+        grupo_cliente:    (((row.grupo_cliente as string | null) ?? '').trim() || 'SEM GRUPO'),
         total_pedidos:    1,
         total_comprado:   valor,
         ultimo_pedido:    data_emissao,

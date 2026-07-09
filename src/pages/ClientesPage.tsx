@@ -10,6 +10,8 @@ import { useSearchParams } from 'react-router-dom';
 import { useCarteira, useClientePedidos } from '@/hooks/useCarteira';
 import { parseDadosTabela } from '@/services/pedidosVenda';
 import type { ClienteCarteira, ClientePedido } from '@/services/carteira';
+import ClienteViewToggle, { type ClienteView } from '@/components/clientes/ClienteViewToggle';
+import ClientGroupsView from '@/components/clientes/groups/ClientGroupsView';
 import {
   AreaChart, Area, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ComposedChart, Bar, Line, ReferenceLine,
@@ -212,7 +214,8 @@ function computeAnalytics(pedidos: ClientePedido[], today: Date): ClienteAnalyti
 }
 
 // Metadados visuais da classificação de movimentação do cliente
-const MOV_META: Record<ClienteAnalytics['movimentacao'], { label: string; chip: string; dot: string }> = {
+export type Movimentacao = ClienteAnalytics['movimentacao'];
+export const MOV_META: Record<ClienteAnalytics['movimentacao'], { label: string; chip: string; dot: string }> = {
   ativo:         { label: 'Ativo',         chip: 'bg-emerald-50 text-emerald-700', dot: 'bg-emerald-500' },
   atencao:       { label: 'Atenção',       chip: 'bg-amber-50 text-amber-700',     dot: 'bg-amber-500' },
   atrasado:      { label: 'Atrasado',      chip: 'bg-red-50 text-red-600',         dot: 'bg-red-500' },
@@ -223,7 +226,7 @@ const MOV_META: Record<ClienteAnalytics['movimentacao'], { label: string; chip: 
 // ─── Micro-componentes ────────────────────────────────
 // Movimentação a partir do resumo da carteira (dias desde o último pedido) — mesma
 // régua do mini-dashboard (Ativo ≤20 · Atenção ≤30 · Atrasado ≤60 · Dormente >60).
-function movimentacaoCliente(c: ClienteCarteira, today: Date): ClienteAnalytics['movimentacao'] {
+export function movimentacaoCliente(c: ClienteCarteira, today: Date): ClienteAnalytics['movimentacao'] {
   if (c.total_pedidos === 0 || !c.ultimo_pedido) return 'sem_historico';
   const d = parseISO(c.ultimo_pedido);
   if (!d) return 'sem_historico';
@@ -420,7 +423,7 @@ function FrequenciaCompra({ stats, reduce }: { stats: ClienteAnalytics['freqStat
 }
 
 // ─── Painel de inteligência do cliente ────────────────
-function ClienteIntel({ cliente, onBack }: { cliente: ClienteCarteira; onBack: () => void }) {
+export function ClienteIntel({ cliente, onBack }: { cliente: ClienteCarteira; onBack: () => void }) {
   const today = useMemo(() => new Date(), []);
   const reduce = useReducedMotion();
   const [contatosAbertos, setContatosAbertos] = useState(false);
@@ -781,7 +784,15 @@ export default function ClientesPage() {
   const [ufFilter, setUfFilter] = useState('');
   const [sort, setSort]         = useState<SortKey>('nome');
   const [selected, setSelected] = useState<ClienteCarteira | null>(null);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const view: ClienteView = searchParams.get('view') === 'grupos' ? 'grupos' : 'clientes';
+  function setView(v: ClienteView) {
+    const p = new URLSearchParams(searchParams);
+    if (v === 'grupos') p.set('view', 'grupos'); else p.delete('view');
+    p.delete('grupo');
+    setSearchParams(p, { replace: true });
+  }
 
   const { data: clientes = [], isLoading } = useCarteira();
 
@@ -828,6 +839,13 @@ export default function ClientesPage() {
 
   return (
     <PageContainer space="none">
+      <div className="mb-3">
+        <ClienteViewToggle view={view} onChange={setView} />
+      </div>
+
+      {view === 'grupos' ? (
+        <ClientGroupsView />
+      ) : (
       <div className="flex gap-4 items-start">
 
         {/* ── Coluna esquerda: lista de clientes ── */}
@@ -910,6 +928,7 @@ export default function ClientesPage() {
           )}
         </div>
       </div>
+      )}
     </PageContainer>
   );
 }
