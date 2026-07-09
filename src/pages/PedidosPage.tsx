@@ -685,7 +685,7 @@ export default function PedidosPage() {
           <KpiCard icon={FileCheck2} label="Faturados" value={String(kpis.faturados)} tone="text-teal-700" />
           <KpiCard icon={Truck} label="Em entrega" value={String(kpis.emEntrega)} tone="text-sky-700" />
           <KpiCard icon={PackageCheck} label="Entregues" value={String(kpis.entregues)} tone="text-emerald-700" />
-          <KpiCard icon={TrendingUp} label="Ticket médio" value={kpis.ticket > 0 ? formatCurrencyK(kpis.ticket) : '—'} tone="text-blue-700" />
+          <KpiCard icon={TrendingUp} label="Média de pedido" value={kpis.ticket > 0 ? formatCurrencyK(kpis.ticket) : '—'} tone="text-blue-700" />
           <KpiCard icon={AlertTriangle} label="Docs pendentes" value={String(kpis.docsPend)} tone={kpis.docsPend > 0 ? 'text-amber-600' : undefined} />
           <KpiCard icon={Clock} label="Atenção / atraso" value={String(kpis.atencao)} tone={kpis.atencao > 0 ? 'text-red-600' : undefined} />
         </div>

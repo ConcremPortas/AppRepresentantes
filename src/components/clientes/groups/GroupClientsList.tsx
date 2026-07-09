@@ -22,7 +22,7 @@ type Ord = 'receita' | 'pedidos' | 'ticket' | 'atraso' | 'ultima';
 const ORD: { value: Ord; label: string }[] = [
   { value: 'receita', label: 'Maior valor' },
   { value: 'pedidos', label: 'Mais pedidos' },
-  { value: 'ticket', label: 'Maior ticket' },
+  { value: 'ticket', label: 'Maior média/pedido' },
   { value: 'atraso', label: 'Mais atrasados' },
   { value: 'ultima', label: 'Última compra' },
 ];
@@ -104,7 +104,7 @@ export default function GroupClientsList({ clientes, today, onOpenCliente }: {
               <div className="hidden sm:flex items-center gap-4 flex-shrink-0 text-right">
                 <div className="w-20"><p className="text-[13px] font-bold text-emerald-700 tabular-nums">{fmtK(c.total_comprado)}</p><p className="text-[9px] text-gray-400">valor</p></div>
                 <div className="w-12"><p className="text-[13px] font-semibold text-gray-700 tabular-nums">{c.total_pedidos}</p><p className="text-[9px] text-gray-400">pedidos</p></div>
-                <div className="w-20"><p className="text-[13px] font-semibold text-gray-700 tabular-nums">{fmtK(ticket)}</p><p className="text-[9px] text-gray-400">ticket</p></div>
+                <div className="w-20"><p className="text-[13px] font-semibold text-gray-700 tabular-nums">{fmtK(ticket)}</p><p className="text-[9px] text-gray-400">média/ped.</p></div>
               </div>
               <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
             </button>

@@ -342,7 +342,7 @@ function ClienteInsights({ cnpj }: { cnpj: string }) {
   const stats = [
     { label: 'Última compra',  value: ins.ultimo ? formatDate(ins.ultimo) : '—' },
     { label: 'Frequência',     value: ins.ciclo ? `~${ins.ciclo} dias` : '—' },
-    { label: 'Ticket médio',   value: ins.ticket > 0 ? formatCurrencyK(ins.ticket) : '—' },
+    { label: 'Média de pedido', value: ins.ticket > 0 ? formatCurrencyK(ins.ticket) : '—' },
     { label: 'Histórico',      value: `${ins.n} pedido(s)${ins.total > 0 ? ` · ${formatCurrencyK(ins.total)}` : ''}` },
   ];
 

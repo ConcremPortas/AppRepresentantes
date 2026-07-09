@@ -52,7 +52,7 @@ export default function PanoramaGlobal({ period }: { period?: DashboardFiltros }
               <Tile icon={DollarSign} label="Valor total"      value={formatCurrencyK(receita)}            tone="bg-emerald-50 text-emerald-600" />
               <Tile icon={Layers}     label="Grupos ativos"    value={grupos.length.toLocaleString('pt-BR')} tone="bg-indigo-50 text-indigo-600" />
               <Tile icon={Briefcase}  label="Representantes"    value={reps.length.toLocaleString('pt-BR')}   tone="bg-blue-50 text-blue-600" />
-              <Tile icon={DollarSign} label="Ticket médio"      value={formatCurrencyK(ticket)}             tone="bg-amber-50 text-amber-600" />
+              <Tile icon={DollarSign} label="Média de pedido"   value={formatCurrencyK(ticket)}             tone="bg-amber-50 text-amber-600" />
             </div>
             {/* Concentração de receita */}
             {grupos.length > 0 && (

@@ -567,7 +567,7 @@ export function ClienteIntel({ cliente, onBack }: { cliente: ClienteCarteira; on
               sub={a.receita > 0 ? formatCurrency(a.receita) : 'sem valor registrado'} />
             <StatTile icon={ShoppingCart} label="Pedidos" value={String(a.totalPedidos)}
               sub={a.intervaloMedio ? `a cada ~${Math.round(a.intervaloMedio)} dias` : 'frequência indisponível'} />
-            <StatTile icon={Receipt} label="Ticket médio" value={fmtVolume(a.ticketMedio)} tone="text-blue-700"
+            <StatTile icon={Receipt} label="Média de pedido" value={fmtVolume(a.ticketMedio)} tone="text-blue-700"
               sub={a.ultimoPedido ? `último: ${formatDate(a.ultimoPedido.toISOString().slice(0, 10))}` : undefined} />
             {/* Próxima compra — prazo padrão fixo de 30 dias */}
             <div className={cn(

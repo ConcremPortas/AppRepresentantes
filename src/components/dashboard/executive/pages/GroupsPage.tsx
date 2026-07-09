@@ -39,7 +39,7 @@ export default function GroupsPage({ period, global }: { period: ExecutivePeriod
       {destaque && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
           <Highlight icon={Crown} label="Maior valor" grupo={destaque.byReceita.grupo} valor={formatCurrencyK(destaque.byReceita.receita)} tone="bg-emerald-50 text-emerald-600" />
-          <Highlight icon={Receipt} label="Maior ticket" grupo={destaque.byTicket.grupo} valor={`${formatCurrencyK(destaque.byTicket.ticketMedio)} / pedido`} tone="bg-blue-50 text-blue-600" />
+          <Highlight icon={Receipt} label="Maior média/ped." grupo={destaque.byTicket.grupo} valor={`${formatCurrencyK(destaque.byTicket.ticketMedio)} / pedido`} tone="bg-blue-50 text-blue-600" />
           <Highlight icon={AlertTriangle} label="Mais em atraso" grupo={destaque.byRisco.grupo} valor={`${destaque.byRisco.clientesAtrasados + destaque.byRisco.clientesDormentes} cliente(s)`} tone="bg-red-50 text-red-500" />
           <Highlight icon={Users} label="Mais clientes" grupo={destaque.byClientes.grupo} valor={`${destaque.byClientes.clientes} cliente(s)`} tone="bg-indigo-50 text-indigo-600" />
         </div>

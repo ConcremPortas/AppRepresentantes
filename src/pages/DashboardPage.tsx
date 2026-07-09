@@ -918,7 +918,7 @@ export default function DashboardPage() {
                 <>
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-xs text-gray-400">
-                      Total: <strong className="text-gray-700">{stats?.pipeline.total ?? 0}</strong> pedidos · Tk. médio <strong className="text-gray-700">{formatCurrencyK(stats?.ticketMedio ?? 0)}</strong>
+                      Total: <strong className="text-gray-700">{stats?.pipeline.total ?? 0}</strong> pedidos · Média de pedido <strong className="text-gray-700">{formatCurrencyK(stats?.ticketMedio ?? 0)}</strong>
                     </span>
                     <button type="button" onClick={() => setPipelineAberto(false)}
                       className="text-xs text-gray-400 hover:text-gray-600 inline-flex items-center gap-1">
@@ -939,7 +939,7 @@ export default function DashboardPage() {
                   </span>
                   <div className="min-w-0">
                     <p className="text-xs font-semibold text-gray-800"><span className="tabular-nums">{stats?.pipeline.total ?? 0}</span> pedidos · 9 estágios</p>
-                    <p className="text-[11px] text-gray-400 tabular-nums">Tk. médio {formatCurrencyK(stats?.ticketMedio ?? 0)}</p>
+                    <p className="text-[11px] text-gray-400 tabular-nums">Média de pedido {formatCurrencyK(stats?.ticketMedio ?? 0)}</p>
                   </div>
                 </div>
                 <span className="flex items-center gap-1 text-xs font-medium text-[hsl(142,93%,8%)] flex-shrink-0">

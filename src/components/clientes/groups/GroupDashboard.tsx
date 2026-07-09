@@ -111,7 +111,7 @@ export default function GroupDashboard({ g, today, onOpenCliente, onBack, childr
         <Kpi icon={Users}        label="Clientes"        value={g.totalClientes.toLocaleString('pt-BR')} tone="bg-gray-100 text-gray-600" />
         <Kpi icon={DollarSign}   label="Valor total"     value={fmtK(g.receita)} tone="bg-emerald-50 text-emerald-600" />
         <Kpi icon={ShoppingCart} label="Pedidos"         value={g.pedidos.toLocaleString('pt-BR')} tone="bg-amber-50 text-amber-600" />
-        <Kpi icon={Receipt}      label="Ticket médio"    value={fmtK(g.ticketMedio)} tone="bg-blue-50 text-blue-600" title="Valor total ÷ nº de pedidos" />
+        <Kpi icon={Receipt}      label="Média de pedido" value={fmtK(g.ticketMedio)} tone="bg-blue-50 text-blue-600" title="Valor total ÷ nº de pedidos" />
         <Kpi icon={Briefcase}    label="Representantes"  value={g.representantes.toLocaleString('pt-BR')} tone="bg-indigo-50 text-indigo-600" title="Representantes distintos atuando no grupo" />
         <Kpi icon={UserCheck}    label="Ativos"          value={g.ativos.toLocaleString('pt-BR')} tone="bg-emerald-50 text-emerald-600" title="Compraram nos últimos 20 dias" />
         <Kpi icon={Clock}        label="Em atenção"      value={g.atencaoN.toLocaleString('pt-BR')} tone="bg-amber-50 text-amber-600" title="Última compra entre 21 e 30 dias" />

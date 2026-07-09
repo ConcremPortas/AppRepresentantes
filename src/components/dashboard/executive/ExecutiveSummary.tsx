@@ -44,7 +44,7 @@ export default function ExecutiveSummary({ period }: { period: ExecutivePeriod }
   const kpis: KpiDef[] = [
     { icon: DollarSign, label: 'Valor do período', value: d.isLoading ? '…' : formatCurrencyK(d.receita), desc: 'vs período anterior', status: (d.receitaDelta ?? 0) >= 0 ? 'bom' : 'atencao', delta: d.receitaDelta, deltaPositivoBom: true },
     { icon: ShoppingCart, label: 'Pedidos no período', value: d.isLoading ? '…' : d.pedidos.toLocaleString('pt-BR'), desc: 'emitidos', status: 'info' },
-    { icon: Receipt, label: 'Ticket médio', value: d.isLoading ? '…' : formatCurrencyK(d.ticket), desc: 'por pedido', status: 'info' },
+    { icon: Receipt, label: 'Média de pedido', value: d.isLoading ? '…' : formatCurrencyK(d.ticket), desc: 'por pedido', status: 'info' },
     { icon: Target, label: 'Conversão de orçamentos', value: d.isLoading ? '…' : `${d.conversao.toFixed(0)}%`, desc: `${d.orcAprovados}/${d.orcCriados} aprovados`, status: convStatus },
     { icon: UserCheck, label: 'Clientes ativos', value: d.isLoading ? '…' : d.ativos.toLocaleString('pt-BR'), desc: `de ${d.clientesTotal} na carteira`, status: 'bom' },
     { icon: AlertTriangle, label: 'Clientes em risco', value: d.isLoading ? '…' : d.clientesRisco.toLocaleString('pt-BR'), desc: `${d.dormentes} dormente(s)`, status: riscoStatus },

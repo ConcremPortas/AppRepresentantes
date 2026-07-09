@@ -474,7 +474,7 @@ function HistoricoCompras({ cnpj }: { cnpj: string }) {
     <div className="grid grid-cols-2 gap-x-4 gap-y-2">
       <div><p className="text-[10px] text-gray-400">Pedidos</p><p className="text-xs font-bold text-gray-800 tabular-nums">{stats.n}</p></div>
       <div><p className="text-[10px] text-gray-400">Volume total</p><p className="text-xs font-bold text-emerald-700 tabular-nums">{stats.total > 0 ? formatCurrencyK(stats.total) : '—'}</p></div>
-      <div><p className="text-[10px] text-gray-400">Ticket médio</p><p className="text-xs font-bold text-gray-800 tabular-nums">{stats.ticket > 0 ? formatCurrencyK(stats.ticket) : '—'}</p></div>
+      <div><p className="text-[10px] text-gray-400">Média de pedido</p><p className="text-xs font-bold text-gray-800 tabular-nums">{stats.ticket > 0 ? formatCurrencyK(stats.ticket) : '—'}</p></div>
       <div><p className="text-[10px] text-gray-400">Última compra</p><p className="text-xs font-bold text-gray-800 tabular-nums">{stats.ultimo ? formatDate(stats.ultimo) : '—'}</p></div>
     </div>
   );
