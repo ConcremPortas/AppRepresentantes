@@ -1,4 +1,4 @@
-import { MemoryRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { perfilDoUsuario, isGlobal } from '@/constants/perfis';
@@ -122,14 +122,15 @@ function AppRoutes() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      {/* MemoryRouter: navegação em memória — a barra de endereço não expõe as
-          telas (fica só o domínio). Trade-off: voltar/atualizar do navegador não
-          navegam dentro do app e não há deep-link externo por URL. */}
-      <MemoryRouter>
+      {/* BrowserRouter: navegação com History API — voltar/avançar do navegador e
+          do mouse funcionam dentro do app, e as URLs viram deep-links reais
+          (compartilháveis e resistentes a F5; o rewrite SPA da Vercel cobre o refresh
+          em qualquer caminho). Acesso continua protegido por guardas + RLS no banco. */}
+      <BrowserRouter>
         <AuthProvider>
           <AppRoutes />
         </AuthProvider>
-      </MemoryRouter>
+      </BrowserRouter>
     </QueryClientProvider>
   );
 }
