@@ -791,7 +791,8 @@ export default function ClientesPage() {
     const p = new URLSearchParams(searchParams);
     if (v === 'grupos') p.set('view', 'grupos'); else p.delete('view');
     p.delete('grupo');
-    setSearchParams(p, { replace: true });
+    p.delete('cnpj');
+    setSearchParams(p);   // push — permite voltar entre Clientes e Grupos
   }
 
   const { data: clientes = [], isLoading } = useCarteira();
