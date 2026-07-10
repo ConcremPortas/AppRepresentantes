@@ -70,7 +70,7 @@ export default function CinematicBackdrop({ reduce }: { reduce: boolean }) {
       <ParallaxLayer sx={sx} sy={sy} depth={-16} className="absolute -inset-6">
         <motion.div
           className="absolute inset-0 bg-cover bg-center will-change-transform"
-          style={{ backgroundImage: 'url(/login-bg.jpg)' }}
+          style={{ backgroundImage: 'url(/logos/Wallpaper-Concrem-Op1.jpg)' }}
           initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 1.05 }}
           animate={{ opacity: 1, scale: reduce ? 1 : [1.05, 1.11, 1.05] }}
           transition={{
