@@ -80,10 +80,11 @@ export default function CinematicBackdrop({ reduce }: { reduce: boolean }) {
         />
       </ParallaxLayer>
 
-      {/* Overlay escuro em gradiente — legibilidade (fixo) */}
+      {/* Overlay escuro em gradiente — legibilidade + máscara da marca gravada
+          na faixa inferior da imagem (fica opaco a partir de ~70% da altura). */}
       <div
         className="absolute inset-0"
-        style={{ backgroundImage: 'linear-gradient(180deg, rgba(4,16,10,0.72) 0%, rgba(5,20,12,0.5) 42%, rgba(3,14,9,0.9) 100%)' }}
+        style={{ backgroundImage: 'linear-gradient(180deg, rgba(4,16,10,0.72) 0%, rgba(5,20,12,0.5) 40%, rgba(3,14,9,0.9) 58%, rgba(2,11,7,1) 70%, rgba(2,10,6,1) 100%)' }}
       />
       {/* Tinta verde institucional (fixo) */}
       <div className="absolute inset-0 bg-[#04120a]/35 mix-blend-multiply" />
