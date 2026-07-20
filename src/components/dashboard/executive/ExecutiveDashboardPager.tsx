@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
-import { LayoutDashboard, UsersRound, Layers, GitBranch, ShieldAlert, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, UsersRound, Layers, GitBranch, ChevronLeft, ChevronRight } from 'lucide-react';
 import PageContainer from '@/components/ui/PageContainer';
 import { DirectorFiltersProvider } from '@/components/dashboard/DirectorFilters';
 import ExecutiveHeader from '@/components/dashboard/executive/ExecutiveHeader';
@@ -12,12 +12,11 @@ import OverviewPage from '@/components/dashboard/executive/pages/OverviewPage';
 import RepresentativesPage from '@/components/dashboard/executive/pages/RepresentativesPage';
 import GroupsPage from '@/components/dashboard/executive/pages/GroupsPage';
 import OperationsPage from '@/components/dashboard/executive/pages/OperationsPage';
-import RisksPage from '@/components/dashboard/executive/pages/RisksPage';
 import { useExecutiveSummary, type ExecutivePeriod } from '@/hooks/useExecutiveSummary';
 import { useRepPerformance } from '@/hooks/useRepPerformance';
 import { cn } from '@/utils/cn';
 
-const KEYS = ['geral', 'representantes', 'grupos', 'operacao', 'riscos'] as const;
+const KEYS = ['geral', 'representantes', 'grupos', 'operacao'] as const;
 type ViewKey = typeof KEYS[number];
 const STORAGE_KEY = 'concrem_exec_view';
 
@@ -45,7 +44,6 @@ export default function ExecutiveDashboardPager({ global = false }: { global?: b
     { key: 'representantes', label: 'Representantes', icon: UsersRound, count: repsAtencao, countTone: 'risco' },
     { key: 'grupos', label: 'Grupos', icon: Layers },
     { key: 'operacao', label: 'Operação', icon: GitBranch, count: summary.pendencias, countTone: 'atencao' },
-    { key: 'riscos', label: 'Riscos', icon: ShieldAlert, count: summary.docs, countTone: 'risco' },
   ];
 
   function goTo(key: string) {
@@ -124,7 +122,6 @@ export default function ExecutiveDashboardPager({ global = false }: { global?: b
                 {active === 'representantes' && <RepresentativesPage period={period} />}
                 {active === 'grupos' && <GroupsPage period={period} global={global} />}
                 {active === 'operacao' && <OperationsPage period={period} />}
-                {active === 'riscos' && <RisksPage period={period} />}
               </ExecutivePageShell>
             </AnimatePresence>
           </div>
